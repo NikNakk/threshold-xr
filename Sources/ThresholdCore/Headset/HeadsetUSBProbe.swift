@@ -51,8 +51,9 @@ public struct IOKitUSBEnumerator: USBDeviceEnumerating {
     public init() {}
 
     public func devices(vendorID: Int) -> [USBDeviceInfo] {
-        guard let matching = IOServiceMatching("IOUSBHostDevice") as NSMutableDictionary? else { return [] }
-        matching[kUSBVendorID] = vendorID
+        // Match every USB device and filter here: adding idVendor to the
+        // matching dictionary silently matched nothing on macOS 27.
+        guard let matching = IOServiceMatching("IOUSBHostDevice") else { return [] }
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS else { return [] }
         defer { IOObjectRelease(iterator) }
@@ -63,7 +64,7 @@ public struct IOKitUSBEnumerator: USBDeviceEnumerating {
             func property(_ key: String) -> Any? {
                 IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
             }
-            let vendor = (property(kUSBVendorID) as? NSNumber)?.intValue ?? vendorID
+            guard let vendor = (property(kUSBVendorID) as? NSNumber)?.intValue, vendor == vendorID else { continue }
             let product = (property(kUSBProductID) as? NSNumber)?.intValue ?? 0
             var name = property(kUSBProductString) as? String ?? property("USB Product Name") as? String
             if name?.isEmpty == true { name = nil }
