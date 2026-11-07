@@ -70,6 +70,10 @@ final class AppModel {
     var shellApps: [ShellAppEntry] = []
     var shellAppsError: String?
 
+    /// Direct launches and their status.
+    let launches: LaunchCoordinator
+    private var lastLaunchPhases: [UUID: LaunchRecord.Phase] = [:]
+
     private var refreshTask: Task<Void, Never>?
     private var lastServiceState: MonadoStatus.ServiceState?
 
@@ -81,6 +85,12 @@ final class AppModel {
         )
         self.context = context
         self.controller = MonadoController(context: context, policy: Self.policy(from: preferences))
+        self.launches = LaunchCoordinator(
+            launcher: DirectLauncher(),
+            crashFinder: CrashReportFinder(home: context.homeDirectory),
+            logDirectory: LaunchLog.defaultDirectory(home: context.homeDirectory)
+        )
+        launches.onChange = { [weak self] record in self?.noteLaunchChange(record) }
     }
 
     private static func policy(from preferences: AppPreferences) -> RuntimeQueryPolicy {
@@ -97,7 +107,10 @@ final class AppModel {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refreshStatus()
-                try? await Task.sleep(for: .seconds(self.preferences.refreshInterval))
+                // Follow launches closely while one is starting or running.
+                let active = self.launches.records.contains { $0.phase.isActive }
+                let interval = active ? min(1, self.preferences.refreshInterval) : self.preferences.refreshInterval
+                try? await Task.sleep(for: .seconds(interval))
             }
         }
     }
@@ -123,6 +136,7 @@ final class AppModel {
         noteTransitions(to: status)
         if !status.isServiceRunning { offerForceStop = false }
         monado = status
+        launches.observe(status)
         loadMonadoSettings(status: status)
     }
 
@@ -231,6 +245,53 @@ final class AppModel {
             record(.error, "Saving Monado settings failed: \(error.localizedDescription)")
             self.error = UserFacingError("Could not save Monado settings", error)
             return false
+        }
+    }
+
+    // MARK: Direct launch
+
+    /// Threshold Home's catalog, as launch targets (one shared app list).
+    var launchTargets: [LaunchTarget] {
+        shellApps.map { LaunchTarget(entry: $0, context: context) }
+    }
+
+    func launch(_ target: LaunchTarget) {
+        Task {
+            // Use fresh status for the preflight and the connection baseline.
+            await refreshStatus()
+            do {
+                try await launches.launch(target, monado: monado)
+                record(.info, "Launched \(target.title) directly (\(target.url.path)).")
+            } catch {
+                record(.error, "Launching \(target.title) failed: \(error.localizedDescription)")
+                self.error = UserFacingError("Could not launch \(target.title)", error)
+            }
+        }
+    }
+
+    func stopLaunch(_ record: LaunchRecord) {
+        self.record(.info, "Stopping \(record.title).")
+        launches.stop(record.id)
+    }
+
+    private func noteLaunchChange(_ launch: LaunchRecord) {
+        let previous = lastLaunchPhases[launch.id]
+        guard previous != launch.phase else { return }
+        lastLaunchPhases[launch.id] = launch.phase
+        switch launch.phase {
+        case .connected:
+            record(.info, "\(launch.title) connected to Monado.")
+        case .presenting:
+            record(.info, "\(launch.title) is presenting in the headset\(launch.clientName.map { " (client \"\($0)\")" } ?? "").")
+        case .exited:
+            record(.info, "\(launch.title) \(launch.stopRequested ? "stopped" : "exited") (\(launch.exit?.description ?? "no status")).")
+        case .crashed:
+            let report = launch.crashReport.map { " Crash report: \($0.path)." } ?? ""
+            record(.error, "\(launch.title) crashed (\(launch.exit?.description ?? "no status")).\(report)")
+        case let .failed(message):
+            record(.error, "\(launch.title) failed: \(message)")
+        default:
+            break
         }
     }
 

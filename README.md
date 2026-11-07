@@ -25,7 +25,13 @@ It is an ordinary desktop app. It opens and works with no headset connected. It 
 - **Settings**: 11 real Monado options and 4 app preferences. Each setting records its type, valid values, default, owner, whether it applies live or needs a service reload, and whether it is advanced or developer-only.
 - **Headset**: PS VR2 USB presence, plus devices and clients reported by Monado when it is safe to ask.
 - **Diagnostics**: the service's log, the app's activity log, the full OpenXR runtime search order, the client-environment variables, the environment of the loaded service, and a copyable report.
-- **Applications**: a placeholder for Milestone 2. For now it shows Threshold Home's existing app catalog, read-only.
+- **Applications (direct launch)**: starts apps from Threshold Home's catalog (`apps.json`, one shared list) straight into the headset, without Threshold Home.
+  - `.app` bundles open through Launch Services; executables and scripts run with their output logged to `~/Library/Logs/Threshold XR/Launches/<app>/`.
+  - Each launch is followed through *Starting*, *Running*, *Connected* (a new Monado connection appears), *In headset* (Monado reports the matching client's session as visible or active), then *Ended*, *Crashed* (crash signal or a new macOS crash report) or *Failed*.
+  - Stop sends a normal quit and forces it after 3 s.
+  - A preflight check blocks missing or non-executable targets and duplicate launches, and warns when Monado cannot start on demand or is not the session runtime.
+  - Threshold XR never sets Monado's primary or focused client: if Threshold Home is running, its existing hand-over does that.
+  - Launched apps keep running if Threshold XR quits.
 
 ## Build and run
 
@@ -68,6 +74,8 @@ Threshold XR.app (SwiftUI)       Sources/ThresholdXR
   AppModel: schedules work, publishes state; no business logic
         │
 ThresholdCore (library)          Sources/ThresholdCore
+  Launch/       launch targets, preflight, launchers (bundle/executable),
+                launch coordinator, crash-report finder
   Monado/       LaunchAgent model + writer, launchctl control, OpenXR
                 registration, installation discovery, libproc socket
                 inspection, read-only libmonado (dlopen), status aggregation
@@ -104,7 +112,7 @@ ThresholdCore has no UI code and no link-time XR dependencies, so Threshold Home
 
 ## Tests
 
-`swift test` runs 53 tests in 11 suites:
+`swift test` runs 70 tests in 14 suites:
 
 - launchctl output parsing and service actions (fake runner): start, restart, stop with wait and timeout, not-loaded errors, load retry, reload order
 - the runtime-query safety policy and status aggregation (installed, service, runtime and headset kept separate)
@@ -113,6 +121,7 @@ ThresholdCore has no UI code and no link-time XR dependencies, so Threshold Home
 - component discovery in a temporary home: play-profile builds, DXMT inside Wine, KosmicKrisp with a missing library, the Wine/Monado tag mismatch warning
 - real `libproc` inspection of a listening and connected Unix socket
 - setting validation and encoding, LaunchAgent writes (backup, preserved keys, rejected invalid values), app preferences
+- direct launch with real child processes: logged output and environment, clean exit, non-zero exit, crash signal, crash report, stop, forced stop of a process that ignores SIGTERM, start failure, duplicate launches, and Connected/In headset tracking from Monado status
 
 ## Live service check (7 November 2026)
 
@@ -131,6 +140,8 @@ The check also found a brief moment while launchd tears the job down when `launc
 
 ## Limitations
 
-- Applications, launching and installing are deferred; see the design document.
+- Installing components and editing the app catalog are deferred; see the design document.
+- Direct launch was checked with a real app bundle (Calculator) and with scripts. *Connected* and *In headset* are tested only against simulated Monado states; they have not yet been seen with a real OpenXR app and the headset.
+- Guest-framework apps such as Alyx start their own isolated Monado service, so they never show *Connected* to the installed service. The threshold-runtime launcher will report their status instead.
 - The headset check is passive: USB presence (Sony `054C:0CDE`, from Monado's psvr2 driver) plus Monado's head device when a query is safe. The PS VR2 display connection is not checked separately.
 - The OpenXR loader does not record its own version, so the OpenXR-SDK checkout's version is shown instead and labelled as such.

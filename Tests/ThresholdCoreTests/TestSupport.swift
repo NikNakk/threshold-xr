@@ -21,7 +21,7 @@ final class FakeRunner: CommandRunning, @unchecked Sendable {
 }
 
 /// A temporary directory removed when the value is released.
-final class TemporaryDirectory {
+final class TemporaryDirectory: @unchecked Sendable {
     let url: URL
 
     init() throws {
