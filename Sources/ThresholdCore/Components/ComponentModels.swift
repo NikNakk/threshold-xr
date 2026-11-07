@@ -71,7 +71,7 @@ public enum ComponentID: String, Sendable, CaseIterable, Codable, Identifiable {
         case .wine: return "Wine runtime directory (containing bin/wine)"
         case .wineXR: return "macos-wine-xr checkout"
         case .alyxHost: return "alyx-native workspace"
-        case .questHost: return "quest-host directory"
+        case .questHost: return "threshold-runtime android directory"
         case .thresholdHome: return "SwiftXR Shell.app or swiftxr-shell executable"
         }
     }

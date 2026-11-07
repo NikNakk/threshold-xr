@@ -140,6 +140,34 @@ struct ComponentDiscoveryTests {
         #expect(alyx.state == .detected)
     }
 
+    @Test func findsQuestHostInThresholdRuntime() throws {
+        let home = try TemporaryDirectory()
+        try home.write("Code/threshold-runtime/android/Makefile", "OUT ?= $(ROOT)/build/quest-mvp\n")
+        try home.write("Code/threshold-runtime/.git/HEAD", "ref: refs/heads/main\n")
+        // Source only: incomplete until the workspace has a build.
+        var quest = try #require(ComponentDiscovery(context: home.context()).discoverAll().first { $0.id == .questHost })
+        #expect(quest.state == .partial)
+        #expect(quest.location?.hasSuffix("Code/threshold-runtime/android") == true)
+        #expect(quest.source?.branch == "main")
+
+        try home.write("Code/alyx-native/build/quest-mvp/bridge-test", "", executable: true)
+        quest = try #require(ComponentDiscovery(context: home.context()).discoverAll().first { $0.id == .questHost })
+        #expect(quest.state == .detected)
+    }
+
+    @Test func questHostHonoursThresholdRuntimeVariables() throws {
+        let home = try TemporaryDirectory()
+        try home.write("rt/android/Makefile", "")
+        try home.write("ws/build/quest-mvp/bridge-test", "", executable: true)
+        let context = home.context(environment: [
+            "THRESHOLD_RUNTIME": home.url.appending(path: "rt").path,
+            "THRESHOLD_WORKSPACE": home.url.appending(path: "ws").path,
+        ])
+        let quest = try #require(ComponentDiscovery(context: context).discoverAll().first { $0.id == .questHost })
+        #expect(quest.state == .detected)
+        #expect(quest.artifacts.allSatisfy { $0.source == .environment })
+    }
+
     @Test func kosmicKrispWithMissingLibraryIsIncomplete() throws {
         let home = try TemporaryDirectory()
         let icd = try home.write("kk.json", #"{"ICD": {"api_version": "1.4", "library_path": "/missing/libvulkan_kosmickrisp.dylib"}}"#)

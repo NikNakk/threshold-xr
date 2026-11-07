@@ -151,7 +151,7 @@ Source builds run the repository's own build entry points, such as Monado's CMak
 
 ## 6. Applications and the guest-app framework boundary
 
-The Alyx and Monado pacing work is moving `~/Code/alyx-native` into a separate "framework" repository: the Linux and Android guest layers on Klepton, per-app fixes, launch and record tools. Threshold XR should treat that framework as an external provider of applications:
+The Alyx and Monado pacing work has moved the guest-app framework into its own repository, `~/Code/threshold-runtime` (private, NikNakk/threshold-runtime, MIT): the Linux guest layer (`linux/`) and Android guest layer (`android/`, formerly `alyx-native/quest-host`) on Klepton, per-app fixes, launch and record tools. Launchers find it through `THRESHOLD_RUNTIME`; builds still go to the `THRESHOLD_WORKSPACE` (default `~/Code/alyx-native`). Threshold XR's Quest host detection follows both. Profiles will carry `monado.build_tag`, read from the built binaries (the compiled-in version can lag the source), alongside the commit, branch, build directory and `service: isolated|installed`. Threshold XR should treat that framework as an external provider of applications:
 
 1. **The framework publishes app profiles.** Each profile is a machine-readable file giving the guest type, host binary, Vulkan driver, the Monado settings it needs, launch arguments and exact component revisions. Today `run-alyx-profile` plus `source-revisions.json` hold this information.
 2. **The framework provides one launch command** that reports status in a machine-readable form (started, running, exited, crashed), plus the run directory and log paths.

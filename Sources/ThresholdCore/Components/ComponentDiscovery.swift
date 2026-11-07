@@ -445,24 +445,44 @@ public struct ComponentDiscovery: Sendable {
         )
     }
 
+    /// The guest-app framework checkout (`THRESHOLD_RUNTIME`, as its
+    /// launchers use, default `~/Code/threshold-runtime`).
+    var thresholdRuntimeRoot: URL {
+        context.environment["THRESHOLD_RUNTIME"].map(context.expand) ?? context.workspace("threshold-runtime")
+    }
+
+    /// Where the framework's builds go (`THRESHOLD_WORKSPACE`, default the
+    /// alyx-native workspace), per threshold-runtime's android/Makefile.
+    var thresholdWorkspaceRoot: URL {
+        context.environment["THRESHOLD_WORKSPACE"].map(context.expand) ?? alyxRoot
+    }
+
     func questHost() -> ComponentStatus {
-        let root = context.override(for: .questHost) ?? alyxRoot.appending(path: "quest-host")
-        let source: ArtifactSource = context.override(for: .questHost) != nil ? .userOverride : .workspace
+        let override = context.override(for: .questHost)
+        let root = override ?? thresholdRuntimeRoot.appending(path: "android")
+        let source: ArtifactSource = override != nil
+            ? .userOverride
+            : (context.environment["THRESHOLD_RUNTIME"] != nil ? .environment : .workspace)
         var artifacts: [DetectedArtifact] = []
         if FileProbe.exists(root.appending(path: "Makefile")) {
-            artifacts.append(.init(role: "Host source", kind: .sourceCheckout, url: root, source: source))
+            artifacts.append(.init(role: "Host source (threshold-runtime)", kind: .sourceCheckout, url: root, source: source))
         }
-        let build = root.deletingLastPathComponent().appending(path: "build/quest-mvp")
-        let bridge = build.appending(path: "bridge-test")
+        let bridge = thresholdWorkspaceRoot.appending(path: "build/quest-mvp/bridge-test")
         if FileProbe.exists(bridge) {
-            artifacts.append(.init(role: "Bridge test build", kind: .executable, url: bridge, source: source))
+            artifacts.append(.init(role: "Bridge test build", kind: .executable, url: bridge,
+                                   source: context.environment["THRESHOLD_WORKSPACE"] != nil ? .environment : .workspace))
         }
+        let hasSource = artifacts.contains { $0.kind == .sourceCheckout }
         return ComponentStatus(
             id: .questHost,
-            state: artifacts.contains { $0.kind == .executable } ? .detected : (artifacts.isEmpty ? .notFound : .partial),
-            location: artifacts.isEmpty ? nil : root.path,
+            state: hasSource && artifacts.contains { $0.kind == .executable } ? .detected : (artifacts.isEmpty ? .notFound : .partial),
+            location: hasSource ? root.path : artifacts.first?.path,
             artifacts: artifacts,
-            notes: artifacts.isEmpty ? [] : ["Experimental: Open Brush's Android build runs offscreen through Klepton; headset use is not yet validated."]
+            notes: artifacts.isEmpty ? [] : [
+                "Provided by the threshold-runtime guest framework; Threshold XR only detects it.",
+                "Experimental: Open Brush's Android build runs offscreen through Klepton; headset use is not yet validated.",
+            ],
+            source: GitCheckoutInfo.read(at: thresholdRuntimeRoot)
         )
     }
 
