@@ -41,9 +41,15 @@ public struct LaunchRecord: Sendable, Equatable, Identifiable {
     public var stopRequested = false
     /// The Monado client name matched to this launch, when known.
     public var clientName: String?
-    /// Monado connections already open before the launch (nil when the
-    /// service was not running, i.e. zero).
+    /// A problem Monado logged while this launch was running.
+    public var monadoProblem: String?
+    /// Monado connections already open before the launch (zero when the
+    /// service was not running).
     var baselineConnections: Int
+    /// launchd's run count for Monado before the launch. A higher count
+    /// later means a client activated the service on demand, which catches
+    /// connections too brief to see in the socket table.
+    var baselineServiceRuns: Int?
 
     public var duration: TimeInterval? { endedAt.map { $0.timeIntervalSince(startedAt) } }
 }
@@ -104,7 +110,8 @@ public final class LaunchCoordinator {
         let baseline = monado?.isServiceRunning == true ? (monado?.sockets?.connectedCount ?? 0) : 0
         let record = LaunchRecord(
             id: UUID(), targetID: target.id, title: target.title, startedAt: Date(),
-            phase: .starting, baselineConnections: baseline
+            phase: .starting, baselineConnections: baseline,
+            baselineServiceRuns: monado?.job?.runs
         )
         records.append(record)
         if records.count > 100 { records.removeFirst(records.count - 100) }
@@ -169,12 +176,22 @@ public final class LaunchCoordinator {
             } else if status.isServiceRunning, let count = status.sockets?.connectedCount,
                       count > record.baselineConnections, phase == .running {
                 phase = .connected
+            } else if phase == .running, let before = record.baselineServiceRuns,
+                      let runs = status.job?.runs, runs > before {
+                phase = .connected
             }
 
-            if phase != record.phase || clientName != record.clientName {
+            var problem = record.monadoProblem
+            if problem == nil, let report = status.lastRun, let modified = report.logModified,
+               modified >= record.startedAt, let first = report.problems.first {
+                problem = first.summary
+            }
+
+            if phase != record.phase || clientName != record.clientName || problem != record.monadoProblem {
                 update(record.id) {
                     $0.phase = phase
                     $0.clientName = clientName
+                    $0.monadoProblem = problem
                 }
             }
         }

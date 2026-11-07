@@ -12,6 +12,11 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 20) {
                 if let status = model.monado {
                     statusGrid(status)
+                    if let report = status.lastRun, report.hasProblems {
+                        LastRunProblems(report: report, logPath: status.installation.agent?.standardErrorPath) {
+                            selection = .diagnostics
+                        }
+                    }
                     serviceControls(status)
                     registration(status)
                     modes(status)
@@ -204,6 +209,66 @@ struct HomeView: View {
         } label: {
             Text("Ways to use Threshold").font(.headline)
         }
+    }
+}
+
+/// Problems from Monado's most recent run, so a failed start is visible
+/// even after the service has exited again.
+private struct LastRunProblems: View {
+    @Environment(AppModel.self) private var model
+    let report: MonadoRunReport
+    let logPath: String?
+    let showDiagnostics: () -> Void
+    @State private var showAll = false
+
+    var body: some View {
+        let shown = showAll ? report.problems : Array(report.problems.prefix(2))
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.title2)
+                .foregroundStyle(.orange)
+                .frame(width: 30)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Monado's last run had problems").font(.headline)
+                ForEach(shown, id: \.self) { problem in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(problem.summary)
+                        Text(problem.logLine)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                            .help(problem.logLine)
+                    }
+                }
+                Text(caption).font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    if report.problems.count > 2 {
+                        Button(showAll ? "Show fewer" : "Show all \(report.problems.count)") { showAll.toggle() }
+                            .buttonStyle(.link)
+                    }
+                    Button("Service log", action: showDiagnostics).buttonStyle(.link)
+                    if let logPath {
+                        Button("Open in Console") { model.open(logPath) }.buttonStyle(.link)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.orange.opacity(0.6)))
+    }
+
+    private var caption: String {
+        var parts: [String] = []
+        if let tag = report.buildTag { parts.append("Build \(tag)") }
+        if let modified = report.logModified {
+            parts.append("log written \(modified.formatted(.relative(presentation: .named)))")
+        }
+        return parts.joined(separator: " · ")
     }
 }
 

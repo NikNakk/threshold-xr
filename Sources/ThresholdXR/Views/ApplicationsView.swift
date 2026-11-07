@@ -118,6 +118,15 @@ private struct ApplicationRow: View {
                 Spacer()
                 controls(active: active, latest: latest, issues: issues)
             }
+            if let problem = (active ?? latest)?.monadoProblem {
+                Label {
+                    Text("While this app ran, Monado reported: \(problem)").font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+                .padding(.leading, 44)
+            }
             ForEach(issues, id: \.self) { issue in
                 Label {
                     Text(issue.message).font(.callout).fixedSize(horizontal: false, vertical: true)
@@ -191,6 +200,7 @@ private struct LaunchHistoryRow: View {
         if let exit = record.exit { parts.append(exit.description) }
         if case let .failed(message) = record.phase { parts.append(message) }
         if let client = record.clientName { parts.append("Monado client \"\(client)\"") }
+        if let problem = record.monadoProblem { parts.append("Monado: \(problem)") }
         return parts.joined(separator: " · ")
     }
 }

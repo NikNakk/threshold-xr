@@ -23,6 +23,7 @@ It is an ordinary desktop app. It opens and works with no headset connected. It 
   Also on Home: Start, Stop and Restart for Monado's LaunchAgent (plus Load when it is unloaded), the system and login-session OpenXR registration (read-only), and a button to open Threshold Home.
 - **Components**: detects each component and shows its version, location, the files it found, its source checkout (branch and commit) and how each path was found. You can override the detection path for any component.
 - **Settings**: 11 real Monado options and 4 app preferences. Each setting records its type, valid values, default, owner, whether it applies live or needs a service reload, and whether it is advanced or developer-only.
+- **Monado's last run**: Home shows problems from the latest run in Monado's service log (for example a compositor that could not set the display's refresh rate, or a USB interface it could not claim), and a launch notes any problem Monado logged while it ran.
 - **Headset**: PS VR2 USB presence, plus devices and clients reported by Monado when it is safe to ask.
 - **Diagnostics**: the service's log, the app's activity log, the full OpenXR runtime search order, the client-environment variables, the environment of the loaded service, and a copyable report.
 - **Applications (direct launch)**: starts apps from Threshold Home's catalog (`apps.json`, one shared list) straight into the headset, without Threshold Home.
@@ -112,7 +113,7 @@ ThresholdCore has no UI code and no link-time XR dependencies, so Threshold Home
 
 ## Tests
 
-`swift test` runs 70 tests in 14 suites:
+`swift test` runs 76 tests in 16 suites:
 
 - launchctl output parsing and service actions (fake runner): start, restart, stop with wait and timeout, not-loaded errors, load retry, reload order
 - the runtime-query safety policy and status aggregation (installed, service, runtime and headset kept separate)

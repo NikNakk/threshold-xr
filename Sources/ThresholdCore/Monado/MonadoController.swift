@@ -93,6 +93,7 @@ public actor MonadoController {
 
     private var lastQuery: (date: Date, result: MonadoStatus.RuntimeQuery)?
     private var cachedInstallation: (key: String, value: MonadoInstallation)?
+    private var cachedRunReport: (modified: Date, report: MonadoRunReport?)?
 
     public init(
         context: DiscoveryContext,
@@ -154,7 +155,7 @@ public actor MonadoController {
             }
         }
 
-        return MonadoStatus(
+        var status = MonadoStatus(
             installation: installation,
             registration: registration,
             job: job,
@@ -166,6 +167,18 @@ public actor MonadoController {
             headsetUSB: PSVR2USB.state(from: usb.devices(vendorID: PSVR2USB.vendorID)),
             checkedAt: Date()
         )
+        status.lastRun = runReport(installation)
+        return status
+    }
+
+    /// Re-reads the service log only when it changes.
+    private func runReport(_ installation: MonadoInstallation) -> MonadoRunReport? {
+        guard let log = installation.agent?.standardErrorPath.map({ URL(fileURLWithPath: $0) }),
+              let modified = FileProbe.modificationDate(log) else { return nil }
+        if let cachedRunReport, cachedRunReport.modified == modified { return cachedRunReport.report }
+        let report = MonadoRunLog.lastRun(in: log)
+        cachedRunReport = (modified, report)
+        return report
     }
 
     /// Installation discovery scans the service binary for its build tag,

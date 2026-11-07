@@ -14,6 +14,8 @@ public struct MonadoStatus: Sendable, Equatable {
     public var sockets: ProcessSocketSummary?
     public var runtimeQuery: RuntimeQuery
     public var headsetUSB: HeadsetUSBState
+    /// Problems in Monado's most recent run, from its service log.
+    public var lastRun: MonadoRunReport? = nil
     public var checkedAt: Date
 
     public enum RuntimeQuery: Sendable, Equatable {
