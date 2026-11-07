@@ -142,6 +142,6 @@ The check also found a brief moment while launchd tears the job down when `launc
 
 - Installing components and editing the app catalog are deferred; see the design document.
 - Direct launch was checked with a real app bundle (Calculator) and with scripts. *Connected* and *In headset* are tested only against simulated Monado states; they have not yet been seen with a real OpenXR app and the headset.
-- Guest-framework apps such as Alyx start their own isolated Monado service, so they never show *Connected* to the installed service. The threshold-runtime launcher will report their status instead.
+- Alyx's `play` profile uses the installed Monado service (since alyx-native `3b9cace`), so Alyx launches can reach *Connected*. xrizer reports the host executable's name (`alyx_host`) to Monado, so *In headset* needs the catalog entry's `openXRApplicationName` to be `alyx_host`. Other Alyx profiles (`play-recorded`, comparisons, replays) still start their own temporary Monado and will never show *Connected*.
 - The headset check is passive: USB presence (Sony `054C:0CDE`, from Monado's psvr2 driver) plus Monado's head device when a query is safe. The PS VR2 display connection is not checked separately.
 - The OpenXR loader does not record its own version, so the OpenXR-SDK checkout's version is shown instead and labelled as such.

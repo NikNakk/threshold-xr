@@ -12,7 +12,7 @@ Status: proposal after Milestone 1. Everything below is grounded in the infrastr
 | System registration | `/usr/local/share/openxr/1/active_runtime.json` → the prefix's manifest (root-owned symlink) | Read-only. |
 | Session control | libmonado API 1.8: client list, primary/focus, I/O blocks, devices, recentre, reference-space offsets; `monado-ctl` | SwiftXR's `XRMonadoRuntimeControl` already wraps the client parts. |
 | Threshold Home | SwiftXR Shell (`/Applications/SwiftXR Shell.app`, `com.nickkennedy.swiftxr-shell`) | Already does launch, focus handoff, return-on-exit, overlay dashboard, and the catalog `~/Library/Application Support/SwiftXRShell/apps.json`. |
-| Native Alyx | `~/Code/alyx-native` (`run-alyx`, `run-alyx-profile`, `source-revisions.json`) | Starts its own isolated Monado service; the play profile names the KosmicKrisp ICD, xrizer library and host. |
+| Native Alyx | `~/Code/alyx-native` (`run-alyx`, `run-alyx-profile`, `source-revisions.json`) | `play` runs on the installed Monado service (`--monado-service installed`, which checks the service and runtime tags match). `play-recorded` and the diagnostic profiles start a temporary service from a matching build. The play profile names the KosmicKrisp ICD, xrizer library and host. xrizer reports the host executable's name (`alyx_host`) as the OpenXR application name. |
 | Wine path | `~/Code/wine-crossover/runtime*`, DXMT installed inside them, `~/Windows/run-windows-game.zsh`, Steam Play tool | The runner selects the x86_64 Monado client (`build/x86_64/openxr_monado-dev.json`), which must match the service's build tag. |
 
 ## 2. Milestone 1 decisions worth keeping
