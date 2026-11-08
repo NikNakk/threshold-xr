@@ -154,7 +154,7 @@ The check also found a brief moment while launchd tears the job down when `launc
 
 ## Limitations
 
-- There is no CI yet. Threshold Home's builds depend on SwiftXR changes that exist only in the local checkout; once they are committed and pushed, CI can build both apps.
+- There is no CI yet. Both apps now build from a clean checkout using SwiftXR's `swiftxr-video-player-poc` branch on GitHub (checked with `SWIFTXR_PATH` pointing elsewhere). SwiftXR is private, so CI will need a token that can read it.
 
 - Installing components and editing the app catalog are deferred; see the design document.
 - Direct launch was verified on hardware on 7 November 2026 (headset connected, not worn) with Open Brush on Monado `v25.1.0-2488-gb870ce571`: *Running* → *Connected* (on-demand activation) → Open Brush's client identified by name → *In headset* after about 18 s (primary, active, visible, focused) → stopped cleanly, with Monado idling out afterwards. An Alyx launch has not been tried yet.
