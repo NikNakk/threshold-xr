@@ -7,7 +7,7 @@ It is an ordinary desktop app. It opens and works with no headset connected. It 
 | Name | What it is |
 | --- | --- |
 | **Threshold XR** | This desktop app: installer (planned), configuration manager and launcher. |
-| **Threshold Home** | The optional immersive environment in the headset. It is currently SwiftXR Shell (`/Applications/SwiftXR Shell.app`). |
+| **Threshold Home** | The optional immersive environment in the headset. Its source is in [`ThresholdHome/`](ThresholdHome/README.md) (imported from SwiftXR Shell with its history); it is still built and installed as `SwiftXR Shell.app`. |
 | **Threshold Agent** | An optional background component. It is not needed yet; see [the design document](docs/design.md#threshold-agent). |
 | **SwiftXR** | The existing Swift XR framework. This project does not depend on it or change it. |
 | **Monado** | The OpenXR runtime. It stays usable on its own. |
@@ -42,6 +42,14 @@ You need Apple Silicon, macOS 14 or later, and Xcode 16 or later (Swift 6). Ther
 swift build
 swift test
 swift run threshold-xr
+```
+
+The package also builds Threshold Home (`swiftxr-shell`). Threshold Home needs the Khronos OpenXR loader in `/usr/local/lib` and SwiftXR: the local checkout at `SWIFTXR_PATH` (default `~/Code/SwiftXR`) when present, otherwise SwiftXR's `swiftxr-video-player-poc` branch on GitHub. Threshold XR itself needs neither; build it alone with `swift build --product threshold-xr`.
+
+To install Threshold Home (as `SwiftXR Shell.app` in `/Applications`, or a folder you name):
+
+```bash
+ThresholdHome/scripts/make-app.zsh
 ```
 
 To build `Threshold XR.app` (into `./build` by default):
@@ -113,6 +121,9 @@ ThresholdCore has no UI code and no link-time XR dependencies, so Threshold Home
 
 ## Tests
 
+Threshold Home's own 61 tests run in the same `swift test`; see [its README](ThresholdHome/README.md) for its hardware tests.
+
+
 `swift test` runs 76 tests in 16 suites:
 
 - launchctl output parsing and service actions (fake runner): start, restart, stop with wait and timeout, not-loaded errors, load retry, reload order
@@ -140,6 +151,8 @@ With your approval, Start, Restart and Stop were run through `MonadoController` 
 The check also found a brief moment while launchd tears the job down when `launchctl print` gives no `state` line. That is now reported as idle, and a test covers it.
 
 ## Limitations
+
+- There is no CI yet. Threshold Home's builds depend on SwiftXR changes that exist only in the local checkout; once they are committed and pushed, CI can build both apps.
 
 - Installing components and editing the app catalog are deferred; see the design document.
 - Direct launch was verified on hardware on 7 November 2026 (headset connected, not worn) with Open Brush on Monado `v25.1.0-2488-gb870ce571`: *Running* → *Connected* (on-demand activation) → Open Brush's client identified by name → *In headset* after about 18 s (primary, active, visible, focused) → stopped cleanly, with Monado idling out afterwards. An Alyx launch has not been tried yet.

@@ -41,7 +41,8 @@ else
   print "No single Apple Development identity found; signing ad hoc (set SIGN_IDENTITY to choose)"
 fi
 
-cd "$repo"
+# Build from the Threshold package root, which contains this app.
+cd "${repo:h}"
 
 if [[ ! -d $destination ]]; then
   print -u2 "Destination folder does not exist: $destination"
