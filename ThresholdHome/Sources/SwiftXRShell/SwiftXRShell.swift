@@ -386,7 +386,13 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
             swapchain: swapchain,
             trackedInput: trackedInput,
             onRequestHome: { [weak self] in
-                DispatchQueue.main.async { self?.returnHome() }
+                DispatchQueue.main.async {
+                    // A capture that could not start is reported in Home and
+                    // to Threshold XR, rather than silently returning.
+                    let failure = self?.desktopMode?.failure
+                    self?.returnHome()
+                    if let failure { self?.shellModel?.launchError = ShellLaunch.describeCaptureFailure(failure, mode: "Desktop") }
+                }
             }
         )
         desktopMode = desktop
@@ -772,7 +778,8 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
             mode: homeMode, foreground: status.foreground, detail: status.detail,
             runtime: status.runtime, input: status.input, canGoHome: status.canGoHome,
             canSwitchModes: status.canSwitchModes, canStopApp: status.canStopApp,
-            mouseCaptureEnabled: status.mouseCaptureEnabled, canRetryConnection: status.canRetryConnection
+            mouseCaptureEnabled: status.mouseCaptureEnabled, canRetryConnection: status.canRetryConnection,
+            notice: shellModel?.launchError
         ))
     }
 
@@ -1177,6 +1184,20 @@ enum ShellLaunch {
     /// LSUIElement, or it was started with --managed.
     static let isManaged = Bundle.main.object(forInfoDictionaryKey: "LSUIElement") as? Bool == true
         || CommandLine.arguments.contains("--managed")
+
+    /// The name macOS lists this app under in Privacy & Security.
+    static var appName: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "SwiftXR Shell"
+    }
+
+    static func describeCaptureFailure(_ error: Error, mode: String) -> String {
+        let ns = error as NSError
+        // ScreenCaptureKit's "user declined TCCs" error.
+        if ns.domain == "com.apple.ScreenCaptureKit.SCStreamErrorDomain" && ns.code == -3801 {
+            return "\(mode) needs Screen Recording permission. Allow \(appName) in System Settings → Privacy & Security → Screen & System Audio Recording, then restart Home."
+        }
+        return "\(mode) could not start: \(error.localizedDescription)"
+    }
 }
 
 @main

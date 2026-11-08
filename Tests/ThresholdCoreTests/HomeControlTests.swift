@@ -48,6 +48,23 @@ struct HomeControlTests {
         #expect(buffer.append(Data(":2}\n".utf8)).count == 1)
     }
 
+    @Test func noticesAreOptionalAndNamePermissions() throws {
+        // A status from a Home without notices still decodes.
+        var json = String(decoding: try JSONEncoder().encode(sampleStatus()), as: UTF8.self)
+        json = json.replacingOccurrences(of: #","notice":null"#, with: "")
+        let decoded = try JSONDecoder().decode(HomeStatus.self, from: Data(json.utf8))
+        #expect(decoded.notice == nil && decoded.missingPermission == nil)
+
+        var status = sampleStatus()
+        status.notice = "Desktop needs Screen Recording permission. Allow Threshold Home in System Settings."
+        #expect(status.missingPermission == .screenRecording)
+        #expect(status.missingPermission?.settingsURL.absoluteString.hasSuffix("Privacy_ScreenCapture") == true)
+        status.notice = "Allow Threshold Home under Accessibility in System Settings"
+        #expect(status.missingPermission == .accessibility)
+        status.notice = "Open Brush could not start"
+        #expect(status.missingPermission == nil)
+    }
+
     @Test func clientReceivesStatusAndServerReceivesCommands() async throws {
         let url = socketURL()
         let received = Box<[HomeCommand]>([])

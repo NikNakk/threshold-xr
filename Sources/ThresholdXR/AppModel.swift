@@ -415,6 +415,17 @@ final class AppModel {
         }
     }
 
+    /// Stops Home and starts it again, e.g. after granting a permission.
+    func restartThresholdHome() {
+        stopThresholdHome()
+        Task {
+            for _ in 0..<60 where homeStatus != nil || homeBusy != nil {
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            launchThresholdHome()
+        }
+    }
+
     func sendToHome(_ command: HomeCommand) {
         guard homeClient.send(command) else {
             record(.warning, "Threshold Home is not running.")

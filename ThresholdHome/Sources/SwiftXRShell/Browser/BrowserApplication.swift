@@ -14,8 +14,8 @@ enum BrowserError: Error, LocalizedError {
         case let .chromiumMissing(path):
             return "Chromium was not found at \(path). Set SWIFTXR_CHROMIUM_PATH to our Chromium.app or executable."
         case .noWindow: return "Chromium did not open a captureable window. Check its desktop window and try Browser again."
-        case .screenRecordingDenied: return "Allow Screen Recording for SwiftXR Shell in System Settings, then restart the Shell."
-        case .accessibilityDenied: return "Allow Accessibility for SwiftXR Shell in System Settings to use Sense input in Chromium. A physical mouse and keyboard still work."
+        case .screenRecordingDenied: return "Browser needs Screen Recording permission. Allow \(ShellLaunch.appName) in System Settings → Privacy & Security → Screen & System Audio Recording, then restart Home."
+        case .accessibilityDenied: return "Allow \(ShellLaunch.appName) under Accessibility in System Settings → Privacy & Security to use Sense input in Chromium. A physical mouse and keyboard still work."
         case .windowClosed: return "The Chromium window is closed or minimised. Open Browser again to create a visible window."
         }
     }

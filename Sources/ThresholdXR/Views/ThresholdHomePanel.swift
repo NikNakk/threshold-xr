@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import ThresholdCore
 
@@ -80,6 +81,27 @@ struct ThresholdHomePanel: View {
                 Label("Stop Home", systemImage: "stop.fill")
             }
             .disabled(model.homeBusy != nil)
+        }
+
+        if let notice = status.notice {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(notice).fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        if let permission = status.missingPermission {
+                            Button("Open \(permission.rawValue) Settings") {
+                                NSWorkspace.shared.open(permission.settingsURL)
+                            }
+                            Button("Restart Home") { model.restartThresholdHome() }
+                                .help("macOS applies a new permission when Home starts again.")
+                        }
+                    }
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
         }
 
         HStack(spacing: 8) {

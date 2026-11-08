@@ -21,11 +21,14 @@ public struct HomeStatus: Codable, Sendable, Equatable {
     public var canStopApp: Bool
     public var mouseCaptureEnabled: Bool
     public var canRetryConnection: Bool
+    /// A problem Home is showing, such as a mode that could not start
+    /// because a macOS permission is missing.
+    public var notice: String?
 
     public init(protocolVersion: Int = HomeControl.protocolVersion, pid: Int32 = getpid(), mode: Mode,
                 foreground: String, detail: String, runtime: String, input: String,
                 canGoHome: Bool, canSwitchModes: Bool, canStopApp: Bool,
-                mouseCaptureEnabled: Bool, canRetryConnection: Bool) {
+                mouseCaptureEnabled: Bool, canRetryConnection: Bool, notice: String? = nil) {
         self.protocolVersion = protocolVersion
         self.pid = pid
         self.mode = mode
@@ -38,6 +41,26 @@ public struct HomeStatus: Codable, Sendable, Equatable {
         self.canStopApp = canStopApp
         self.mouseCaptureEnabled = mouseCaptureEnabled
         self.canRetryConnection = canRetryConnection
+        self.notice = notice
+    }
+
+    /// The macOS permission a notice says is missing, if any.
+    public var missingPermission: MissingPermission? {
+        guard let notice else { return nil }
+        if notice.localizedCaseInsensitiveContains("Screen Recording") { return .screenRecording }
+        if notice.localizedCaseInsensitiveContains("Accessibility") { return .accessibility }
+        return nil
+    }
+
+    public enum MissingPermission: String, Sendable {
+        case screenRecording = "Screen Recording"
+        case accessibility = "Accessibility"
+
+        /// The System Settings privacy pane for this permission.
+        public var settingsURL: URL {
+            URL(string: "x-apple.systempreferences:com.apple.preference.security?" +
+                (self == .screenRecording ? "Privacy_ScreenCapture" : "Privacy_Accessibility"))!
+        }
     }
 }
 
