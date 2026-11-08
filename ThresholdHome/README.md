@@ -425,8 +425,16 @@ alignment, visual quality and perceived latency still need hardware acceptance.
 
 In Desktop mode the controllers drive the Mac's own cursor. Aim at the desktop panel to move the pointer, and press the **trigger** to click; hold it to drag, and press twice quickly to double-click. The **right thumbstick** scrolls under the pointer, either **PS button** returns Home, and holding **Options** recentres as elsewhere. A dot on the panel shows where you are aiming before the captured cursor catches up.
 
+Pointing is smoothed (a One Euro filter: strong when your hand is nearly still, light when it moves quickly). A press lands where you were aiming about 60 ms before the trigger pull, which tips the controller, and the cursor then stays put until the aim moves more than about 1.2% of the display width (about 18 points on a 1512-point display), so a click with a slightly unsteady hand stays a click. Moving further starts a drag. The pointer dot shows the smoothed position, held still during a click.
+
 Events are posted system-wide at the matching point on the primary display, so they reach whichever window is under the cursor. This needs the **Accessibility** permission (System Settings → Privacy & Security → Accessibility), which Desktop asks for on first use, as Browser does. Aim movements smaller than 2 points are ignored while no button is held, so controller jitter does not take the cursor away from a physical mouse. Losing tracking or leaving Desktop releases a held button where the pointer last was.
 
+
+## Home panel size
+
+Home is 3.0 metres wide at the 1.8 metre viewing distance by default. Set `"homeWidthMeters"` in `~/Library/Application Support/SwiftXRShell/settings.json` (1.5–5.0), or `SWIFTXR_HOME_WIDTH_METERS` for one launch, and restart. The layout stays 1280×720 points; wider panels are drawn at a proportionally higher resolution (1600×900 at 3.0 m) so text stays as sharp.
+
+## Virtual desktop size
 
 The virtual desktop preserves the captured display's aspect ratio. Its default physical width is **3.2 metres** at the current 2.0 metre viewing distance.
 
