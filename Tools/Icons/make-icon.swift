@@ -1,14 +1,14 @@
 import AppKit
 import CoreGraphics
 
-// Threshold app icons: a doorway (the threshold) opening onto a glowing
-// virtual world. Threshold Home uses the plain doorway; Threshold XR adds a
-// settings badge. Regenerate both from the repository root with:
+// The Threshold app icon: a doorway (the threshold) opening onto a glowing
+// virtual world. Threshold XR and its Threshold Home helper share it.
+// Regenerate it from the repository root with:
 //
 //   swift Tools/Icons/make-icon.swift Tools/Icons/out
 //
-// then copy ThresholdXR.png to Resources/AppIcon.png and ThresholdHome.png to
-// ThresholdHome/Resources/AppIcon.png. preview.png shows both at Dock sizes.
+// then copy Threshold.png to Resources/AppIcon.png and to
+// ThresholdHome/Resources/AppIcon.png. preview.png shows it at Dock sizes.
 
 let size: CGFloat = 1024
 let out = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? ".")
@@ -42,7 +42,7 @@ func doorPath(_ rect: CGRect, radius: CGFloat) -> CGPath {
     return p
 }
 
-func render(badge: Bool) -> CGImage {
+func render() -> CGImage {
     let ctx = CGContext(data: nil, width: Int(size), height: Int(size), bitsPerComponent: 8, bytesPerRow: 0,
                         space: CGColorSpace(name: CGColorSpace.sRGB)!,
                         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
@@ -130,32 +130,6 @@ func render(badge: Bool) -> CGImage {
 
     ctx.restoreGState()
 
-    if badge {
-        // Desktop manager badge: control sliders in a light disc, bottom right.
-        let disc = CGRect(x: 640, y: 116, width: 270, height: 270)
-        ctx.saveGState()
-        ctx.setShadow(offset: CGSize(width: 0, height: -6), blur: 18, color: color(0x000000, 0.45))
-        ctx.addEllipse(in: disc)
-        ctx.setFillColor(color(0xf4f8ff)); ctx.fillPath()
-        ctx.restoreGState()
-        ctx.addEllipse(in: disc.insetBy(dx: 7, dy: 7))
-        ctx.setStrokeColor(color(0x52c8ff)); ctx.setLineWidth(10); ctx.strokePath()
-        let config = NSImage.SymbolConfiguration(pointSize: 128, weight: .bold)
-        if let symbol = NSImage(systemSymbolName: "slider.horizontal.3", accessibilityDescription: nil)?
-            .withSymbolConfiguration(config) {
-            let tinted = NSImage(size: symbol.size, flipped: false) { rect in
-                symbol.draw(in: rect)
-                NSColor(srgbRed: 0.07, green: 0.16, blue: 0.42, alpha: 1).set()
-                rect.fill(using: .sourceAtop)
-                return true
-            }
-            var r = CGRect(origin: .zero, size: tinted.size)
-            if let cg = tinted.cgImage(forProposedRect: &r, context: nil, hints: nil) {
-                let w = tinted.size.width, h = tinted.size.height
-                ctx.draw(cg, in: CGRect(x: disc.midX - w / 2, y: disc.midY - h / 2, width: w, height: h))
-            }
-        }
-    }
     return ctx.makeImage()!
 }
 
@@ -164,25 +138,20 @@ func write(_ image: CGImage, _ name: String) {
     try! rep.representation(using: .png, properties: [:])!.write(to: out.appending(path: name))
 }
 
-let home = render(badge: false)
-let manager = render(badge: true)
-write(home, "ThresholdHome.png")
-write(manager, "ThresholdXR.png")
+let icon = render()
+write(icon, "Threshold.png")
 
-// Preview sheet: both icons at large and Dock/Finder sizes, on light and dark.
-let sheet = CGContext(data: nil, width: 1600, height: 900, bitsPerComponent: 8, bytesPerRow: 0,
+// Preview sheet: the icon at large and Dock/Finder sizes, on light and dark.
+let sheet = CGContext(data: nil, width: 1000, height: 900, bitsPerComponent: 8, bytesPerRow: 0,
                       space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-sheet.setFillColor(color(0xf2f2f5)); sheet.fill(CGRect(x: 0, y: 450, width: 1600, height: 450))
-sheet.setFillColor(color(0x1e1e22)); sheet.fill(CGRect(x: 0, y: 0, width: 1600, height: 450))
+sheet.setFillColor(color(0xf2f2f5)); sheet.fill(CGRect(x: 0, y: 450, width: 1000, height: 450))
+sheet.setFillColor(color(0x1e1e22)); sheet.fill(CGRect(x: 0, y: 0, width: 1000, height: 450))
 sheet.interpolationQuality = .high
-for (row, y) in [(0, 470), (1, 20)] {
-    _ = row
-    sheet.draw(home, in: CGRect(x: 30, y: y, width: 400, height: 400))
-    sheet.draw(manager, in: CGRect(x: 450, y: y, width: 400, height: 400))
-    var x: CGFloat = 900
+for y: CGFloat in [470, 20] {
+    sheet.draw(icon, in: CGRect(x: 30, y: y, width: 400, height: 400))
+    var x: CGFloat = 480
     for s: CGFloat in [128, 64, 32] {
-        sheet.draw(home, in: CGRect(x: x, y: CGFloat(y) + 200 - s / 2, width: s, height: s))
-        sheet.draw(manager, in: CGRect(x: x, y: CGFloat(y) + 60 - s / 2, width: s, height: s))
+        sheet.draw(icon, in: CGRect(x: x, y: y + 200 - s / 2, width: s, height: s))
         x += s + 40
     }
 }
