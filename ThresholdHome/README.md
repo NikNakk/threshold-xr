@@ -18,7 +18,7 @@ The repository currently contains a runnable Home shell with built-in Video, Des
 - mouse pointer capture and native SwiftUI interaction;
 - controller navigation plumbing;
 - integrated immersive video player with local files and YouTube support;
-- integrated ScreenCaptureKit virtual desktop;
+- integrated ScreenCaptureKit virtual desktop, operable with the controllers;
 - Home-launchable Chromium browser window with Sense pointing and physical-keyboard text input;
 - Home ↔ Video, Home ↔ Desktop and Home ↔ Browser transitions without creating a second OpenXR client;
 - explicit external application catalog;
@@ -414,7 +414,12 @@ and absence of an on-screen browser window. Neither starts an OpenXR session
 or requires Screen Recording/Accessibility. In-headset WebXR handoff, controller
 alignment, visual quality and perceived latency still need hardware acceptance.
 
-## Virtual desktop size
+## Virtual desktop controls
+
+In Desktop mode the controllers drive the Mac's own cursor. Aim at the desktop panel to move the pointer, and press the **trigger** to click; hold it to drag, and press twice quickly to double-click. The **right thumbstick** scrolls under the pointer, the **menu** action returns Home, and holding **Options** recentres as elsewhere. A dot on the panel shows where you are aiming before the captured cursor catches up.
+
+Events are posted system-wide at the matching point on the primary display, so they reach whichever window is under the cursor. This needs the **Accessibility** permission (System Settings → Privacy & Security → Accessibility), which Desktop asks for on first use, as Browser does. Aim movements smaller than 2 points are ignored while no button is held, so controller jitter does not take the cursor away from a physical mouse. Losing tracking or leaving Desktop releases a held button where the pointer last was.
+
 
 The virtual desktop preserves the captured display's aspect ratio. Its default physical width is **3.2 metres** at the current 2.0 metre viewing distance.
 

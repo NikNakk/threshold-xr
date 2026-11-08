@@ -360,7 +360,8 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
         guard
             mode == .home,
             let session,
-            let swapchain
+            let swapchain,
+            let trackedInput
         else { return }
 
         leaveHomeInput()
@@ -369,6 +370,7 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
         let desktop = ShellDesktopMode(
             session: session,
             swapchain: swapchain,
+            trackedInput: trackedInput,
             onRequestHome: { [weak self] in
                 DispatchQueue.main.async { self?.returnHome() }
             }

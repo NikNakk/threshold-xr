@@ -1,3 +1,4 @@
+@preconcurrency import ApplicationServices
 import Foundation
 import Metal
 import SwiftXR
@@ -10,7 +11,10 @@ final class ShellDesktopMode {
 
     private let session: XRSession
     private let swapchain: XRSwapchain
+    private let trackedInput: ShellTrackedInput
     private let onRequestHome: () -> Void
+    private let interaction = XRPanelInteraction()
+    private var input: DesktopPointerInput?
 
     private var setupTask: Task<Void, Never>?
     private var capture: DesktopCapture?
@@ -21,11 +25,14 @@ final class ShellDesktopMode {
     init(
         session: XRSession,
         swapchain: XRSwapchain,
+        trackedInput: ShellTrackedInput,
         onRequestHome: @escaping () -> Void
     ) {
         self.session = session
         self.swapchain = swapchain
+        self.trackedInput = trackedInput
         self.onRequestHome = onRequestHome
+        interaction.handler = { [weak self] event in self?.input?.handle(event) }
     }
 
     func activate() {
@@ -52,7 +59,16 @@ final class ShellDesktopMode {
 
                 self.capture = capture
                 self.renderer = renderer
+                // Controller pointing posts mouse events, which needs the
+                // Accessibility permission; ask once, as Browser does.
+                let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+                let trusted = AXIsProcessTrustedWithOptions(options)
+                self.input = DesktopPointerInput(displayFrame: capture.displayFrame)
+                trackedInput.reset(interaction: interaction)
                 self.isReady = true
+                print(trusted
+                    ? "[desktop] controller: trigger clicks/drags · right stick scrolls · menu returns Home"
+                    : "[desktop] controller pointing needs Accessibility permission for SwiftXR Shell")
                 print(
                     "[desktop] capture started: " +
                     "\(capture.display.width)x\(capture.display.height)"
@@ -79,6 +95,9 @@ final class ShellDesktopMode {
         setupTask?.cancel()
         setupTask = nil
         isReady = false
+        trackedInput.suspend(interaction: interaction)
+        input?.cancel()
+        input = nil
 
         if let capture {
             Task { @MainActor in
@@ -92,14 +111,30 @@ final class ShellDesktopMode {
     func renderFrame() throws {
         let desktopFrame = try capture?.latestFrame()
         let renderer = self.renderer
+        if session.state != .focused { trackedInput.suspend(interaction: interaction) }
+        var commands = TrackedPanelCommands()
 
         _ = try session.renderFrame(to: swapchain) { frame, texture, commandBuffer in
             if let renderer {
+                ShellStageAnchor.shared.updateIfNeeded(from: frame)
+                if input != nil {
+                    commands = try trackedInput.update(
+                        frame: frame,
+                        interaction: interaction,
+                        model: ShellStageAnchor.shared.modelMatrix(
+                            worldWidth: renderer.geometry.widthMeters,
+                            textureAspect: renderer.geometry.aspectRatio,
+                            distance: ShellStageAnchor.defaultDistance
+                        ),
+                        faceButtonsSelect: false
+                    )
+                }
                 try renderer.encode(
                     frame: frame,
                     swapchainTexture: texture,
                     desktopTexture: desktopFrame?.texture,
-                    commandBuffer: commandBuffer
+                    commandBuffer: commandBuffer,
+                    pointerPosition: interaction.pointerPosition
                 )
             } else {
                 try Self.clearFrame(
@@ -109,6 +144,8 @@ final class ShellDesktopMode {
                 )
             }
         }
+        if commands.recenter { ShellStageAnchor.shared.requestRecenter() }
+        if commands.menu { onRequestHome() }
     }
 
     private static func configuredDesktopWidthMeters() -> Float {
