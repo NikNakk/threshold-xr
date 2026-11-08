@@ -423,7 +423,7 @@ alignment, visual quality and perceived latency still need hardware acceptance.
 
 ## Virtual desktop controls
 
-In Desktop mode the controllers drive the Mac's own cursor. Aim at the desktop panel to move the pointer, and press the **trigger** to click; hold it to drag, and press twice quickly to double-click. The **right thumbstick** scrolls under the pointer, either **PS button** returns Home, and holding **Options** recentres as elsewhere. A dot on the panel shows where you are aiming before the captured cursor catches up.
+In Desktop mode the controllers drive the Mac's own cursor. Aim at the desktop panel to move the pointer, and press the **trigger** to click; hold it to drag, and press twice quickly to double-click. Squeeze the **grip** on the pointing hand to right-click. The **right thumbstick** scrolls under the pointer, either **PS button** returns Home, and holding **Options** recentres as elsewhere. A dot on the panel shows where you are aiming before the captured cursor catches up.
 
 Pointing is smoothed (a One Euro filter: strong when your hand is nearly still, light when it moves quickly). A press lands where you were aiming about 60 ms before the trigger pull, which tips the controller, and the cursor then stays put until the aim moves more than about 1.2% of the display width (about 18 points on a 1512-point display), so a click with a slightly unsteady hand stays a click. Moving further starts a drag. The pointer dot shows the smoothed position, held still during a click.
 

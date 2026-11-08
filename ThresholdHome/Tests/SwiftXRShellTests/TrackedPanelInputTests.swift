@@ -155,6 +155,30 @@ struct HomeButtonRoutingTests {
     }
 }
 
+@Suite("Grip on the pointing hand")
+@MainActor
+struct PointerGripRoutingTests {
+    @Test func gripPressOnThePointingHandIsOneSecondaryClick() {
+        let router = TrackedPanelRouter()
+        let interaction = XRPanelInteraction()
+        var idle = TrackedPanelHand()
+        idle.active = true
+        idle.origin = SIMD3(0, 0, 1)
+        idle.direction = SIMD3(0, 0, -1)
+        func sample(_ left: TrackedPanelHand, _ right: TrackedPanelHand) -> TrackedPanelCommands {
+            router.route(hands: [left, right], focused: true, interaction: interaction,
+                         model: matrix_identity_float4x4, deltaTime: 0.01)
+        }
+        _ = sample(idle, idle)
+        var squeeze = idle
+        squeeze.grip = true
+        #expect(sample(idle, squeeze).pointerGrip, "right hand points by default")
+        #expect(!sample(idle, squeeze).pointerGrip, "holding the grip does not repeat")
+        _ = sample(idle, idle)
+        #expect(!sample(squeeze, idle).pointerGrip, "the other hand's grip is not a click")
+    }
+}
+
 @Suite("OpenXR controller integration")
 struct ControllerRuntimeTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["SWIFTXR_TEST_RUNTIME"] == "1"))

@@ -126,6 +126,21 @@ final class DesktopPointerInput {
         }
     }
 
+    /// A right click (secondary button down and up) at the steadied aim from
+    /// just before the press, as the trigger does. Ignored during a left
+    /// button drag or click, and when there is no pointer.
+    func secondaryClick() {
+        guard isTrusted(), !isDown, lastPoint != nil else { return }
+        let point = rewoundPoint(at: now())
+        for type in [CGEventType.rightMouseDown, .rightMouseUp] {
+            guard let event = CGEvent(mouseEventSource: source, mouseType: type,
+                                      mouseCursorPosition: point, mouseButton: .right) else { continue }
+            event.setIntegerValueField(.mouseEventClickState, value: 1)
+            deliver(event)
+        }
+        postedPoint = point
+    }
+
     /// Releases a held button, so losing tracking or leaving Desktop never
     /// leaves the Mac with the mouse button down.
     func cancel() { release() }

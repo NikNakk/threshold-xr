@@ -137,6 +137,35 @@ struct DesktopPointerInputTests {
         #expect(downs.map { $0.getIntegerValueField(.mouseEventClickState) } == [1, 2])
     }
 
+    @Test func gripRightClicksWhereTheAimWasBeforeTheSqueeze() throws {
+        var events: [CGEvent] = []
+        var time: TimeInterval = 0
+        let input = makeInput(events: { events.append($0) }, clock: { time })
+        input.secondaryClick()
+        #expect(events.isEmpty, "no pointer, no click")
+        input.handle(.pointerMoved(to: SIMD2(0.30, 0.30)))
+        time = 0.03
+        input.handle(.pointerMoved(to: SIMD2(0.30, 0.30)))
+        time = 0.08 // squeezing tips the controller
+        input.handle(.pointerMoved(to: SIMD2(0.30, 0.33)))
+        time = 0.09
+        input.secondaryClick()
+        let right = events.filter { $0.type == .rightMouseDown || $0.type == .rightMouseUp }
+        #expect(right.map(\.type) == [.rightMouseDown, .rightMouseUp])
+        let down = try #require(right.first)
+        #expect(abs(down.location.y - 0.30 * 981) < 0.01)
+        #expect(down.getIntegerValueField(.mouseEventButtonNumber) == 1)
+    }
+
+    @Test func gripDoesNothingDuringALeftButtonPress() {
+        var events: [CGEvent] = []
+        let input = makeInput { events.append($0) }
+        input.handle(.pointerMoved(to: SIMD2(0.5, 0.5)))
+        input.handle(.pointerDown(.primary))
+        input.secondaryClick()
+        #expect(!events.contains { $0.type == .rightMouseDown })
+    }
+
     @Test func losingThePointerReleasesTheButton() {
         var events: [CGEvent] = []
         let input = makeInput { events.append($0) }

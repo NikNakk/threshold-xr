@@ -63,6 +63,8 @@ struct TrackedPanelCommands {
     var menu = false
     /// The PS button (Sense) or system button (Touch): return to Home.
     var home = false
+    /// The pointing hand's grip was just pressed (a secondary click).
+    var pointerGrip = false
     var recenter = false
     var hasActivity = false
     var togglePlay = false
@@ -127,6 +129,9 @@ final class TrackedPanelRouter {
         if let uv, pointerEnabled {
             if interaction.pointerPosition != uv {
                 interaction.movePointer(to: uv)
+            }
+            if hand.grip && previousHand.active && !previousHand.grip {
+                result.pointerGrip = true
             }
             // Sub-pixel tracking jitter must not keep video controls awake.
             if activityPosition.map({ simd_distance($0, uv) > 0.01 }) ?? true {
