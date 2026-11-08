@@ -69,6 +69,7 @@ let package = Package(
             name: "SwiftXRShell",
             dependencies: [
                 "CVizBridge",
+                "ThresholdCore",
                 .product(name: "SwiftXR", package: "SwiftXR"),
             ],
             path: "ThresholdHome/Sources/SwiftXRShell",

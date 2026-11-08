@@ -6,6 +6,7 @@ import GameController
 import QuartzCore
 import SwiftUI
 import SwiftXR
+import ThresholdCore
 
 @MainActor
 private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
@@ -21,6 +22,8 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
         didSet { if mode != oldValue { updateCompanionWindow() } }
     }
     private var companionWindow: ShellCompanionWindow?
+    /// Threshold XR's view of Home: status out, the status window's actions in.
+    private var homeControl: HomeControlServer?
     private var mouseCaptureEnabled = true
     private var foregroundVRAppName: String?
     private var startupError: String?
@@ -62,8 +65,11 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
         let companion = ShellCompanionWindow()
         companion.onAction = { [weak self] action in self?.handleCompanionAction(action) }
         companionWindow = companion
+        // Menus stay installed when managed: their key equivalents (⇧⌘M to
+        // release the mouse, ⌘1–4) still work while Home is frontmost.
         companion.installMenus()
-        companion.showWindow(nil)
+        if !ShellLaunch.isManaged { companion.showWindow(nil) }
+        startHomeControl()
         updateCompanionWindow()
         NSApplication.shared.activate(ignoringOtherApps: true)
         DispatchQueue.main.async {
@@ -94,6 +100,7 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        homeControl?.stop()
         stopHomeFrameLoop()
         if let xrActivity { ProcessInfo.processInfo.endActivity(xrActivity) }
         systemOverlay?.shutdown()
@@ -736,7 +743,7 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
                 detail = "External OpenXR application"
             }
         }
-        companionWindow?.update(ShellCompanionStatus(
+        let status = ShellCompanionStatus(
             foreground: foreground, detail: detail,
             runtime: instance?.runtime.name ?? startupError ?? "Starting OpenXR…",
             input: mode == .browser ? "Sense pointer · physical keyboard · ⇧⌘H Home"
@@ -747,7 +754,53 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
             canStopApp: externalLauncher.isRunningExternalApplication,
             mouseCaptureEnabled: mouseCaptureEnabled,
             canRetryConnection: session == nil
+        )
+        companionWindow?.update(status)
+        let homeMode: HomeStatus.Mode
+        if session == nil {
+            homeMode = startupError == nil ? .connecting : .unavailable
+        } else {
+            switch mode {
+            case .home: homeMode = .home
+            case .video: homeMode = .video
+            case .desktop: homeMode = .desktop
+            case .browser: homeMode = .browser
+            case .external: homeMode = .external
+            }
+        }
+        homeControl?.publish(HomeStatus(
+            mode: homeMode, foreground: status.foreground, detail: status.detail,
+            runtime: status.runtime, input: status.input, canGoHome: status.canGoHome,
+            canSwitchModes: status.canSwitchModes, canStopApp: status.canStopApp,
+            mouseCaptureEnabled: status.mouseCaptureEnabled, canRetryConnection: status.canRetryConnection
         ))
+    }
+
+    private func startHomeControl() {
+        let server = HomeControlServer { [weak self] command in
+            MainActor.assumeIsolated { self?.handleHomeCommand(command) }
+        }
+        do {
+            try server.start()
+            homeControl = server
+            print("[shell] control channel: \(server.socketURL.path)")
+        } catch {
+            fputs("[shell] control channel unavailable: \(error.localizedDescription)\n", stderr)
+        }
+    }
+
+    private func handleHomeCommand(_ command: HomeCommand) {
+        switch command {
+        case .home: handleCompanionAction(.home)
+        case .video: handleCompanionAction(.video)
+        case .desktop: handleCompanionAction(.desktop)
+        case .browser: handleCompanionAction(.browser)
+        case .recenter: handleCompanionAction(.recenter)
+        case .stopApp: handleCompanionAction(.stopApp)
+        case .toggleMouse: handleCompanionAction(.toggleMouse)
+        case .retryConnection: handleCompanionAction(.retryConnection)
+        case .quit: NSApplication.shared.terminate(nil)
+        }
     }
 
     private func handleCompanionAction(_ action: ShellCompanionWindow.Action) {
@@ -1119,12 +1172,21 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+enum ShellLaunch {
+    /// True when Home runs as Threshold XR's helper: its bundle sets
+    /// LSUIElement, or it was started with --managed.
+    static let isManaged = Bundle.main.object(forInfoDictionaryKey: "LSUIElement") as? Bool == true
+        || CommandLine.arguments.contains("--managed")
+}
+
 @main
 struct SwiftXRShell {
     @MainActor
     static func main() {
         let application = XRMacApplication.shared
-        application.setActivationPolicy(.regular)
+        // Inside Threshold XR, Home runs without a Dock icon or status
+        // window; Threshold XR's Home tab shows its status instead.
+        application.setActivationPolicy(ShellLaunch.isManaged ? .accessory : .regular)
 
         let appDelegate = SwiftXRShellAppDelegate()
         application.delegate = appDelegate

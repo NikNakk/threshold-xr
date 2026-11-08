@@ -137,6 +137,7 @@ final class AppModel {
         if !status.isServiceRunning { offerForceStop = false }
         monado = status
         launches.observe(status)
+        connectToHomeIfRunning()
         loadMonadoSettings(status: status)
     }
 
@@ -318,30 +319,107 @@ final class AppModel {
 
     /// Opens Threshold Home (SwiftXR Shell). It connects to Monado as an
     /// ordinary client, so launchd starts the service on demand if needed.
-    func launchThresholdHome() {
+    // MARK: Threshold Home
+
+    /// Threshold Home's latest status while it runs (nil when it is not running).
+    var homeStatus: HomeStatus?
+    var homeBusy: HomeTransition?
+    enum HomeTransition: String { case starting = "Starting", stopping = "Stopping" }
+
+    @ObservationIgnored private lazy var homeClient: HomeControlClient = {
+        let client = HomeControlClient()
+        client.onStatus = { [weak self] status in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if self.homeStatus == nil { self.record(.info, "Connected to Threshold Home (pid \(status.pid)).") }
+                self.homeStatus = status
+                if self.homeBusy == .starting { self.homeBusy = nil }
+            }
+        }
+        client.onDisconnect = { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if self.homeStatus != nil { self.record(.info, "Threshold Home stopped.") }
+                self.homeStatus = nil
+                if self.homeBusy == .stopping { self.homeBusy = nil }
+            }
+        }
+        return client
+    }()
+
+    /// Connects to a running Home; cheap enough to call on every refresh.
+    func connectToHomeIfRunning() {
+        if !homeClient.isConnected { homeClient.connect() }
+    }
+
+    /// The Home app to launch: the helper inside Threshold XR.app, else a
+    /// separately installed SwiftXR Shell (development builds).
+    var homeApplicationURL: URL? {
+        let embedded = Bundle.main.bundleURL.appending(path: "Contents/Helpers/Threshold Home.app")
+        if FileManager.default.fileExists(atPath: embedded.path) { return embedded }
         guard let home = components.first(where: { $0.id == .thresholdHome }),
-              let app = home.artifacts.first(where: { $0.kind == .bundle && $0.exists }) else {
+              let app = home.artifacts.first(where: { $0.kind == .bundle && $0.exists }) else { return nil }
+        return URL(fileURLWithPath: app.path)
+    }
+
+    var thresholdHomeAvailable: Bool { homeApplicationURL != nil }
+
+    func launchThresholdHome() {
+        guard homeStatus == nil, homeBusy == nil else { return }
+        guard let url = homeApplicationURL else {
             error = UserFacingError("Threshold Home was not found",
-                                    message: "No SwiftXR Shell application was detected.",
-                                    suggestion: "Install it with SwiftXRShell/scripts/make-app.zsh, or set its path on the Components screen.")
+                                    message: "This copy of Threshold XR has no Threshold Home helper, and no SwiftXR Shell is installed.",
+                                    suggestion: "Build the app with scripts/make-app.zsh, which includes Threshold Home.")
             return
         }
+        homeBusy = .starting
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
-        NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: app.path), configuration: configuration) { [weak self] _, error in
+        // A separately installed Shell runs headless too; its status shows here.
+        configuration.arguments = ["--managed"]
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { [weak self] _, error in
             Task { @MainActor in
+                guard let self else { return }
                 if let error {
-                    self?.record(.error, "Launching Threshold Home failed: \(error.localizedDescription)")
-                    self?.error = UserFacingError("Could not launch Threshold Home", error)
-                } else {
-                    self?.record(.info, "Launched Threshold Home from \(app.path).")
+                    self.homeBusy = nil
+                    self.record(.error, "Starting Threshold Home failed: \(error.localizedDescription)")
+                    self.error = UserFacingError("Could not start Threshold Home", error)
+                    return
                 }
+                self.record(.info, "Started Threshold Home from \(url.path).")
+                // Home serves its control channel once it has launched.
+                for _ in 0..<40 where self.homeStatus == nil {
+                    self.connectToHomeIfRunning()
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+                if self.homeBusy == .starting { self.homeBusy = nil }
             }
         }
     }
 
-    var thresholdHomeAvailable: Bool {
-        components.first(where: { $0.id == .thresholdHome })?.artifacts.contains { $0.kind == .bundle && $0.exists } ?? false
+    /// Asks Home to quit cleanly, then forces it only if it does not.
+    func stopThresholdHome() {
+        guard let status = homeStatus, homeBusy == nil else { return }
+        homeBusy = .stopping
+        homeClient.send(.quit)
+        let pid = status.pid
+        Task {
+            for _ in 0..<32 where homeStatus != nil {
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            if homeStatus != nil, let app = NSRunningApplication(processIdentifier: pid) {
+                record(.warning, "Threshold Home did not quit; forcing it to stop.")
+                app.forceTerminate()
+            }
+            homeBusy = nil
+        }
+    }
+
+    func sendToHome(_ command: HomeCommand) {
+        guard homeClient.send(command) else {
+            record(.warning, "Threshold Home is not running.")
+            return
+        }
     }
 
     // MARK: Activity log

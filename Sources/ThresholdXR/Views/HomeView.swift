@@ -17,6 +17,7 @@ struct HomeView: View {
                             selection = .diagnostics
                         }
                     }
+                    ThresholdHomePanel()
                     serviceControls(status)
                     registration(status)
                     modes(status)
@@ -191,10 +192,9 @@ struct HomeView: View {
                 ModeRow(
                     title: "Threshold Home",
                     systemImage: "house.lodge",
-                    detail: "The immersive SwiftXR home in the headset. It launches applications and returns when they exit."
+                    detail: "The immersive home in the headset. It launches applications and returns when they exit."
                 ) {
-                    Button("Open Threshold Home") { model.launchThresholdHome() }
-                        .disabled(!model.thresholdHomeAvailable)
+                    StatusPill(text: model.homeStatus == nil ? "Not running" : "Running", tone: model.homeStatus == nil ? .inactive : .good)
                 }
                 Divider()
                 ModeRow(
