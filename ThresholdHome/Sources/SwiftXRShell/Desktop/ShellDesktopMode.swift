@@ -134,7 +134,9 @@ final class ShellDesktopMode {
                     swapchainTexture: texture,
                     desktopTexture: desktopFrame?.texture,
                     commandBuffer: commandBuffer,
-                    pointerPosition: interaction.pointerPosition
+                    // The smoothed aim (held still during a click), matching
+                    // where desktop events actually go.
+                    pointerPosition: input.map { $0.displayedUV } ?? interaction.pointerPosition
                 )
             } else {
                 try Self.clearFrame(

@@ -197,7 +197,7 @@ final class HomeFrameLoop: @unchecked Sendable {
         let hand = TrackedPanelHand(hands[selectedHand])
         guard let origin = hand.origin, let direction = hand.direction else { return nil }
         return PanelRay.hit(origin: origin, direction: direction,
-                            model: ShellStageAnchor.shared.modelMatrix(worldWidth: 2.40,
+                            model: ShellStageAnchor.shared.modelMatrix(worldWidth: ShellSettings.homeWidthMeters,
                                 textureAspect: Float(renderer.panelTexture.width) / Float(renderer.panelTexture.height)))
     }
 

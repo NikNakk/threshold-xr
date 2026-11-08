@@ -7,8 +7,13 @@ enum ShellOverlayButton: String, Codable, Sendable {
 }
 
 struct ShellSettings: Sendable {
+    static let defaultHomeWidthMeters: Float = 3.0
+    static let homeWidthRange: ClosedRange<Float> = 1.5...5.0
+
     var systemOverlayButton: ShellOverlayButton = .home
     var steamGames: SteamGamesConfiguration = .default
+    /// Width of the Home panel at the standard 1.8 m viewing distance.
+    var homeWidthMeters: Float = defaultHomeWidthMeters
 
     private struct Document: Codable {
         var systemOverlayButton: ShellOverlayButton?
@@ -16,6 +21,8 @@ struct ShellSettings: Sendable {
         var steamGamesTool: String?
         /// The rig's run-windows-game.zsh.
         var windowsGameRunner: String?
+        /// Home panel width in metres (1.5–5.0; default 3.0).
+        var homeWidthMeters: Float?
     }
 
     static var settingsURL: URL {
@@ -57,9 +64,24 @@ struct ShellSettings: Sendable {
         }
         return ShellSettings(
             systemOverlayButton: document.systemOverlayButton ?? .home,
-            steamGames: steamGames
+            steamGames: steamGames,
+            homeWidthMeters: clampedHomeWidth(document.homeWidthMeters)
         )
     }
+
+    static func clampedHomeWidth(_ value: Float?) -> Float {
+        guard let value, value.isFinite else { return defaultHomeWidthMeters }
+        return min(max(value, homeWidthRange.lowerBound), homeWidthRange.upperBound)
+    }
+
+    /// The Home panel width: SWIFTXR_HOME_WIDTH_METERS, else settings.json's
+    /// homeWidthMeters, else the default. Read once at startup.
+    static let homeWidthMeters: Float = {
+        if let text = ProcessInfo.processInfo.environment["SWIFTXR_HOME_WIDTH_METERS"], let value = Float(text) {
+            return clampedHomeWidth(value)
+        }
+        return (try? load().homeWidthMeters) ?? defaultHomeWidthMeters
+    }()
 
     private static func expandedFileURL(_ path: String) -> URL {
         URL(fileURLWithPath: (path as NSString).expandingTildeInPath).standardizedFileURL

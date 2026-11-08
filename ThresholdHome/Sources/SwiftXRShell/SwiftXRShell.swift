@@ -259,18 +259,25 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
 
         let trackedInput = try ShellTrackedInput(session: session)
         let swapchain = try session.makeStereoSwapchain()
+        // Home keeps its 1280×720 point layout; a wider panel is drawn at a
+        // proportionally higher resolution so text stays as sharp (scale 1 at
+        // the original 2.4 m, 1.25 → 1600×900 at the 3.0 m default).
+        let homeScale = min(max((1280 * CGFloat(ShellSettings.homeWidthMeters) / 2.4).rounded() / 1280, 1), 2)
         let panel = try XRSwiftUIPanel(
             device: session.device,
             pointSize: CGSize(width: 1280, height: 720),
-            scale: 1
+            scale: homeScale
         ) {
             ShellHomeView(model: model)
         }
         let renderer = try ShellPanelRenderer(
             device: session.device,
             swapchain: swapchain,
-            panelTexture: panel.texture
+            panelTexture: panel.texture,
+            worldWidth: ShellSettings.homeWidthMeters
         )
+        print(String(format: "[shell] Home panel: %.2f m wide, rendered at %.0f×%.0f",
+                     ShellSettings.homeWidthMeters, 1280 * homeScale, 720 * homeScale))
         let pointerCapture = XRMacPointerCapture(panel: panel)
         panel.refreshesOnPointerMovement = false
         panel.usesImmutableTextures = true
@@ -928,7 +935,7 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
             }
             let commands = trackedInput.apply(state: controllers, frame: frame,
                 interaction: panel.interaction,
-                model: ShellStageAnchor.shared.modelMatrix(worldWidth: 2.40, textureAspect: 1280.0 / 720))
+                model: ShellStageAnchor.shared.modelMatrix(worldWidth: ShellSettings.homeWidthMeters, textureAspect: 1280.0 / 720))
             if shellModel?.usesTrackedControllers != commands.usesControllers {
                 shellModel?.usesTrackedControllers = commands.usesControllers
             }
