@@ -63,7 +63,7 @@ final class ShellBrowserMode: ShellBrowserPresentation {
                 trackedInput.reset(interaction: interaction)
                 let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
                 let trusted = AXIsProcessTrustedWithOptions(options)
-                status = trusted ? "Chromium · trigger selects · right stick scrolls · menu returns Home"
+                status = trusted ? "Chromium · trigger selects · right stick scrolls · PS returns Home"
                     : BrowserError.accessibilityDenied.localizedDescription
                 input.focus()
                 print("[browser] capturing Chromium window \(window.windowID); profile: \(browser.configuration.profile.path)")
@@ -115,7 +115,7 @@ final class ShellBrowserMode: ShellBrowserPresentation {
         }
         if commands.recenter { ShellStageAnchor.shared.requestRecenter() }
         if commands.back { input?.back() }
-        if commands.menu { transitionRequested = true; onRequestHome() }
+        if commands.home { transitionRequested = true; onRequestHome() }
     }
 
     private func refreshWindowFrame() {

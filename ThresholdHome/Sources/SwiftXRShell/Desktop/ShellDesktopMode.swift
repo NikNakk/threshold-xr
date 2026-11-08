@@ -67,7 +67,7 @@ final class ShellDesktopMode {
                 trackedInput.reset(interaction: interaction)
                 self.isReady = true
                 print(trusted
-                    ? "[desktop] controller: trigger clicks/drags · right stick scrolls · menu returns Home"
+                    ? "[desktop] controller: trigger clicks/drags · right stick scrolls · PS returns Home"
                     : "[desktop] controller pointing needs Accessibility permission for SwiftXR Shell")
                 print(
                     "[desktop] capture started: " +
@@ -145,7 +145,9 @@ final class ShellDesktopMode {
             }
         }
         if commands.recenter { ShellStageAnchor.shared.requestRecenter() }
-        if commands.menu { onRequestHome() }
+        // Only PS leaves Desktop: Options is held to recentre, and Create has
+        // no meaning on the Mac desktop.
+        if commands.home { onRequestHome() }
     }
 
     private static func configuredDesktopWidthMeters() -> Float {

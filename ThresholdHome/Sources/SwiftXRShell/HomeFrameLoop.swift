@@ -178,7 +178,7 @@ final class HomeFrameLoop: @unchecked Sendable {
 
     private static func buttons(_ input: XRControllerState) -> [Bool] {
         [input.isFocused] + [input.left, input.right].flatMap {
-            [$0.isActive, $0.select, $0.primaryButton, $0.back, $0.menu, $0.recenter, $0.grip]
+            [$0.isActive, $0.select, $0.primaryButton, $0.back, $0.menu, $0.home, $0.recenter, $0.grip]
         }
     }
 

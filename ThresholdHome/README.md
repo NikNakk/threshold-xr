@@ -76,7 +76,14 @@ Tracked controllers are the default input in Home and Video whenever OpenXR repo
 - Aim at a panel and press its trigger to click; hold the trigger to drag sliders. The right hand is preferred initially; pressing the other hand's trigger transfers the pointer when no drag is in progress.
 - Use the **right thumbstick** to scroll where vertical scrolling is available (Home and YouTube). Home targets the view under the pointer, or its main scroll view when the ray is outside it. The left stick does not scroll. The paginated Video file list uses its on-screen page controls.
 - During video playback, **left grip** jumps back **10 seconds**, **right grip** jumps forward **10 seconds**, and **Cross / A** toggles pause/play. Square / X on the left hand also toggles playback. Face buttons select items in the library; triggers always operate the pointed-at UI. Conventional gamepads use Cross / A for playback and L1/R1 for the same 10-second seek steps.
-- **Circle / B** returns from Video to Home, or navigates back within YouTube. **Triangle / Y** on the left controller recentres the shared stage. The Touch menu action toggles playback controls, or returns Home from the library; availability of the Sense PS/menu button depends on runtime bindings.
+- **Circle / B** returns from Video to Home, or navigates back within YouTube. **Triangle / Y** on the left controller recentres the shared stage. The **PS button** on either Sense controller returns Home from Video, Desktop and Browser. **Create** toggles the playback controls in Video, and a trigger press also reveals them. **Options** is deliberately unbound, because holding it recentres in Monado.
+
+SwiftXR suggests four interaction profiles and the runtime picks one per controller, preferring the controller's own:
+
+- **PS VR2 Sense** (`XR_MNDX_psvr2_interaction`, enabled when offered): PS is Home, Create is Menu, Square/Cross primary, Circle back, Triangle recentres.
+- **Generic controller** (`XR_KHR_generic_controller`, enabled when offered): the same controls for any controller; it has no Menu or Home button.
+- **Oculus Touch**: left menu is Menu, right system is Home where allowed. Monado also uses this for Sense when the PS VR2 profile is unavailable.
+- **Simple controller**: aim, select and menu.
 - Playback controls auto-hide after inactivity. A trigger press reveals hidden controls without clicking through them; the next press can activate a control.
 - **Escape** returns from Video/Desktop to Home; Escape from Home exits the Shell. Browser keeps Escape for Chromium and uses **Shift+Cmd+H** or its controller menu action for Home.
 - Holding **Options** to reset Monado's stage also recentres the Shell. The Shell follows the runtime's LOCAL/STAGE reference-space-change event at its effective display time, rather than implementing a second hold gesture that could race the runtime.
@@ -416,7 +423,7 @@ alignment, visual quality and perceived latency still need hardware acceptance.
 
 ## Virtual desktop controls
 
-In Desktop mode the controllers drive the Mac's own cursor. Aim at the desktop panel to move the pointer, and press the **trigger** to click; hold it to drag, and press twice quickly to double-click. The **right thumbstick** scrolls under the pointer, the **menu** action returns Home, and holding **Options** recentres as elsewhere. A dot on the panel shows where you are aiming before the captured cursor catches up.
+In Desktop mode the controllers drive the Mac's own cursor. Aim at the desktop panel to move the pointer, and press the **trigger** to click; hold it to drag, and press twice quickly to double-click. The **right thumbstick** scrolls under the pointer, either **PS button** returns Home, and holding **Options** recentres as elsewhere. A dot on the panel shows where you are aiming before the captured cursor catches up.
 
 Events are posted system-wide at the matching point on the primary display, so they reach whichever window is under the cursor. This needs the **Accessibility** permission (System Settings → Privacy & Security → Accessibility), which Desktop asks for on first use, as Browser does. Aim movements smaller than 2 points are ignored while no button is held, so controller jitter does not take the cursor away from a physical mouse. Losing tracking or leaving Desktop releases a held button where the pointer last was.
 

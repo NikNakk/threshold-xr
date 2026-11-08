@@ -210,7 +210,7 @@ final class ShellVideoMode {
                 try startPointerCaptureIfReady()
                 pointerCapture.poll()
             }
-            if trackedCommands.hasActivity && !trackedCommands.menu { notePanelActivity(redraw: false) }
+            if trackedCommands.hasActivity && !trackedCommands.menu && !trackedCommands.home { notePanelActivity(redraw: false) }
 
             if let currentRenderer {
                 try currentRenderer.encode(
@@ -609,6 +609,9 @@ final class ShellVideoMode {
                 if !youtubeBrowser.back() { leaveYouTubeToFiles() }
             } else { onRequestHome() }
         }
+        // PS (either Sense controller) leaves Video for Home, as it leaves
+        // Desktop and Browser. Menu (Create) toggles the playback controls.
+        if commands.home { onRequestHome() }
         if commands.menu {
             if libraryModel.mode == .controls {
                 panelVisible.toggle()

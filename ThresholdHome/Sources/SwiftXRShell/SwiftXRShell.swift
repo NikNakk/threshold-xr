@@ -406,7 +406,7 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
         mode = .browser
         installBrowserHomeMonitor()
         browser.activate()
-        print("[shell] Browser \(viz ? "(Viz)" : "(window)") active — controller menu or ⇧⌘H returns Home")
+        print("[shell] Browser \(viz ? "(Viz)" : "(window)") active — PS button or ⇧⌘H returns Home")
     }
 
     private func enterExternal(

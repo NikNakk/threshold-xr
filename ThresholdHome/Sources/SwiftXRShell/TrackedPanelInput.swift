@@ -33,6 +33,7 @@ struct TrackedPanelHand {
     var grip = false
     var back = false
     var menu = false
+    var home = false
     var recenter = false
     var stick: SIMD2<Float> = .zero
 
@@ -45,6 +46,7 @@ struct TrackedPanelHand {
         grip = state.grip
         back = state.back
         menu = state.menu
+        home = state.home
         recenter = state.recenter
         stick = state.thumbstick
         if let pose = state.aimPose {
@@ -59,6 +61,8 @@ struct TrackedPanelCommands {
     var usesControllers = false
     var back = false
     var menu = false
+    /// The PS button (Sense) or system button (Touch): return to Home.
+    var home = false
     var recenter = false
     var hasActivity = false
     var togglePlay = false
@@ -159,11 +163,12 @@ final class TrackedPanelRouter {
         for i in 0..<2 where hands[i].active && old[i].active {
             result.back = result.back || (hands[i].back && !old[i].back)
             result.menu = result.menu || (hands[i].menu && !old[i].menu)
+            result.home = result.home || (hands[i].home && !old[i].home)
             result.recenter = result.recenter || (hands[i].recenter && !old[i].recenter)
             result.togglePlay = result.togglePlay || (hands[i].primary && !old[i].primary)
             if hands[i].grip && !old[i].grip { result.seekSteps += i == 0 ? -1 : 1 }
         }
-        result.hasActivity = result.hasActivity || result.back || result.menu || result.recenter || result.togglePlay || result.seekSteps != 0
+        result.hasActivity = result.hasActivity || result.back || result.menu || result.home || result.recenter || result.togglePlay || result.seekSteps != 0
         return result
     }
 

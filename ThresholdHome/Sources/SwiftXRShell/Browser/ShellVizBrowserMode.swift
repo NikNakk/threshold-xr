@@ -194,7 +194,7 @@ final class ShellVizBrowserMode: ShellBrowserPresentation {
         }
         if commands.back { client.send(kind: UInt32(SXR_VIZ_BACK)) }
         if commands.recenter { ShellStageAnchor.shared.requestRecenter() }
-        if commands.menu { requestHome() }
+        if commands.home { requestHome() }
     }
     private func focusPage() {
         model.editingAddress = false
