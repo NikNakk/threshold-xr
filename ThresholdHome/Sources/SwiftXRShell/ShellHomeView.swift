@@ -1,0 +1,154 @@
+import SwiftUI
+
+@MainActor
+struct ShellHomeView: View {
+    @ObservedObject var model: ShellModel
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 250, maximum: 320), spacing: 22)
+    ]
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.025, green: 0.04, blue: 0.08),
+                    Color(red: 0.055, green: 0.10, blue: 0.17),
+                    Color(red: 0.025, green: 0.04, blue: 0.08),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            VStack(alignment: .leading, spacing: 28) {
+                HStack(alignment: .center, spacing: 16) {
+                    Image(systemName: "viewfinder.circle.fill")
+                        .font(.system(size: 54, weight: .semibold))
+                        .foregroundStyle(.cyan)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("SwiftXR Shell")
+                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                        Text("OpenXR on macOS")
+                            .font(.system(size: 15, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.62))
+                    }
+
+                    Spacer()
+
+                    Button {
+                        ShellStageAnchor.shared.requestRecenter()
+                    } label: {
+                        Label("Recenter", systemImage: "scope")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+
+                    Button {
+                        model.openSettings()
+                    } label: {
+                        Label("Settings", systemImage: "gearshape.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+
+                if let error = model.launchError {
+                    HStack(alignment: .top) {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.orange)
+                            .lineLimit(4)
+                        Spacer()
+                        Button("Dismiss") { model.launchError = nil }
+                            .buttonStyle(.bordered)
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.06)))
+                }
+
+                ScrollView {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 22) {
+                        ForEach(model.applications) { application in
+                            let isEnabled = model.isLaunchEnabled(application)
+                            Button {
+                                model.launch(application)
+                            } label: {
+                                ShellApplicationTile(
+                                    application: application,
+                                    isEnabled: isEnabled
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!isEnabled)
+                        }
+                    }
+                    .padding(.vertical, 4)
+
+                    SteamGamesSection(model: model, library: model.steamLibrary)
+                        .padding(.top, 22)
+                        .padding(.bottom, 4)
+                }
+
+                HStack {
+                    Label(
+                        model.usesTrackedControllers
+                            ? "Aim to point • trigger to select • right stick to scroll • △ to recenter"
+                            : "Move mouse to point • click to select • Esc to exit",
+                        systemImage: model.usesTrackedControllers ? "hand.point.up.left.fill" : "cursorarrow.motionlines"
+                    )
+                    Spacer()
+                    Text("SwiftXR")
+                        .fontWeight(.semibold)
+                }
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(0.48))
+            }
+            .padding(42)
+        }
+        .foregroundStyle(.white)
+        .frame(width: 1280, height: 720)
+    }
+}
+
+@MainActor
+private struct ShellApplicationTile: View {
+    let application: ShellApplication
+    let isEnabled: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Image(systemName: application.systemImage)
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(.cyan)
+                Spacer()
+                Image(systemName: isEnabled ? "arrow.up.right" : "lock.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.42))
+            }
+
+            Spacer(minLength: 12)
+
+            Text(application.title)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+
+            Text(application.subtitle)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.white.opacity(0.62))
+                .lineLimit(2)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, minHeight: 190, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.white.opacity(0.075))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 1.5)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .opacity(isEnabled ? 1 : 0.45)
+    }
+}
