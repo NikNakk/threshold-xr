@@ -69,7 +69,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary" "$app/Contents/MacOS/$executable"
 
 # Every standard macOS icon size from 1024px artwork
-# (regenerate it with Tools/Icons/make-icon.swift).
+# (Resources/AppIcon.png and ThresholdHome/Resources/AppIcon.png).
 make_icns() { # source output
   local iconset="$staging/AppIcon-$RANDOM.iconset"
   mkdir -p "$iconset"
