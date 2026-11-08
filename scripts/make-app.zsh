@@ -18,6 +18,7 @@ destination=${1:-$repo/build}
 name="Threshold XR"
 executable=threshold-xr
 bundle_id=${BUNDLE_ID:-com.nickkennedy.threshold-xr}
+icon_source="$repo/Resources/AppIcon.png"
 
 apple_development_identity() {
   local -a hashes
@@ -52,6 +53,16 @@ app="$staging/$name.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary" "$app/Contents/MacOS/$executable"
 
+# Every standard macOS icon size from the 1024px artwork
+# (regenerate it with Tools/Icons/make-icon.swift).
+iconset="$staging/AppIcon.iconset"
+mkdir -p "$iconset"
+for size in 16 32 128 256 512; do
+  sips -z "$size" "$size" "$icon_source" --out "$iconset/icon_${size}x${size}.png" >/dev/null
+  sips -z $((size * 2)) $((size * 2)) "$icon_source" --out "$iconset/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
+
 cat > "$app/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -61,6 +72,7 @@ cat > "$app/Contents/Info.plist" <<EOF
   <key>CFBundleDisplayName</key><string>$name</string>
   <key>CFBundleIdentifier</key><string>$bundle_id</string>
   <key>CFBundleExecutable</key><string>$executable</string>
+  <key>CFBundleIconFile</key><string>AppIcon.icns</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$version</string>
   <key>CFBundleVersion</key><string>$build</string>
@@ -81,4 +93,7 @@ target="$destination/$name.app"
 rm -rf "$target"
 mv "$app" "$target"
 touch "$target"
+# Refresh Launch Services so Finder and the Dock show the new icon.
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+[[ -x $lsregister ]] && "$lsregister" -f "$target" || true
 print "Built $target ($version, build $build, signed: $identity)"

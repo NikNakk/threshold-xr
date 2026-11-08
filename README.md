@@ -70,6 +70,8 @@ scripts/make-app.zsh /Applications
 
 The script signs with your single Apple Development identity if you have one, otherwise ad hoc. Set `SIGN_IDENTITY` or `BUNDLE_ID` to override either. It follows the same conventions as SwiftXR Shell's `scripts/make-app.zsh`.
 
+Both app icons, a doorway opening onto a virtual world with a settings badge for Threshold XR, are drawn by `Tools/Icons/make-icon.swift`; it explains how to regenerate them.
+
 To render every screen to PNG without a display session or Screen Recording permission (a developer aid):
 
 ```bash
