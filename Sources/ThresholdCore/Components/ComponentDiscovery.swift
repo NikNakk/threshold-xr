@@ -85,8 +85,8 @@ public struct ComponentDiscovery: Sendable {
         var candidates: [(URL, ArtifactSource)] = []
         if let override = context.override(for: .openXRLoader) { candidates.append((override, .userOverride)) }
         candidates += [
-            (URL(fileURLWithPath: "/usr/local/lib/libopenxr_loader.dylib"), .knownLocation),
-            (URL(fileURLWithPath: "/opt/homebrew/lib/libopenxr_loader.dylib"), .knownLocation),
+            (context.system("/usr/local/lib/libopenxr_loader.dylib"), .knownLocation),
+            (context.system("/opt/homebrew/lib/libopenxr_loader.dylib"), .knownLocation),
             (context.workspace("OpenXR-SDK/build/macos/src/loader/Release/libopenxr_loader.dylib"), .workspace),
         ]
         let found = candidates.filter { FileProbe.exists($0.0) }
@@ -299,10 +299,10 @@ public struct ComponentDiscovery: Sendable {
         if let profileICD = profile?.url(for: AlyxLaunchProfile.kosmicKrispICD) { icds.append((profileICD, .launchProfile)) }
         let icdDirs = [
             context.home(".local/share/vulkan/icd.d"),
-            URL(fileURLWithPath: "/opt/homebrew/etc/vulkan/icd.d"),
-            URL(fileURLWithPath: "/opt/homebrew/share/vulkan/icd.d"),
-            URL(fileURLWithPath: "/usr/local/etc/vulkan/icd.d"),
-            URL(fileURLWithPath: "/usr/local/share/vulkan/icd.d"),
+            context.system("/opt/homebrew/etc/vulkan/icd.d"),
+            context.system("/opt/homebrew/share/vulkan/icd.d"),
+            context.system("/usr/local/etc/vulkan/icd.d"),
+            context.system("/usr/local/share/vulkan/icd.d"),
         ]
         for dir in icdDirs {
             for file in FileProbe.directoryContents(dir) where file.lastPathComponent.lowercased().contains("kosmickrisp") {
@@ -498,7 +498,7 @@ public struct ComponentDiscovery: Sendable {
             candidates += urls.map { ($0, .registration) }
         }
         candidates += [
-            (URL(fileURLWithPath: "/Applications/SwiftXR Shell.app"), .knownLocation),
+            (context.system("/Applications/SwiftXR Shell.app"), .knownLocation),
             (context.home("Applications/SwiftXR Shell.app"), .knownLocation),
             (context.workspace("SwiftXRShell/.build/release/swiftxr-shell"), .workspace),
         ]

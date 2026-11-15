@@ -102,8 +102,8 @@ public struct MonadoInstallation: Sendable, Equatable {
         if executable == nil {
             let fallbacks = [
                 context.home(".local/monado/bin/monado-service"),
-                URL(fileURLWithPath: "/usr/local/bin/monado-service"),
-                URL(fileURLWithPath: "/opt/homebrew/bin/monado-service"),
+                context.system("/usr/local/bin/monado-service"),
+                context.system("/opt/homebrew/bin/monado-service"),
             ]
             if let found = fallbacks.first(where: FileProbe.isExecutableFile) {
                 executable = found

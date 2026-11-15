@@ -17,6 +17,10 @@ public struct DiscoveryContext: Sendable {
     /// User-specified paths, keyed by `ComponentID.rawValue`. An override is
     /// tried before any other candidate.
     public var pathOverrides: [String: String]
+    /// Where system-wide locations (`/usr/local`, `/opt/homebrew`, `/Applications`)
+    /// are looked up: `/`, or a temporary folder in tests so the machine's own
+    /// installs are not found.
+    public var systemRoot: URL
 
     public init(
         homeDirectory: URL,
@@ -24,8 +28,10 @@ public struct DiscoveryContext: Sendable {
         environment: [String: String],
         workspaceRoot: URL? = nil,
         windowsRigRoot: URL? = nil,
-        pathOverrides: [String: String] = [:]
+        pathOverrides: [String: String] = [:],
+        systemRoot: URL = URL(fileURLWithPath: "/")
     ) {
+        self.systemRoot = systemRoot
         self.homeDirectory = homeDirectory
         self.userID = userID
         self.environment = environment
@@ -56,6 +62,11 @@ public struct DiscoveryContext: Sendable {
     }
 
     public var launchdDomain: String { "gui/\(userID)" }
+
+    /// A system-wide location, such as `system("/opt/homebrew/bin/monado-service")`.
+    public func system(_ absolute: String) -> URL {
+        systemRoot.path == "/" ? URL(fileURLWithPath: absolute) : systemRoot.appending(path: absolute)
+    }
 
     public func home(_ relative: String) -> URL { homeDirectory.appending(path: relative) }
     public func workspace(_ relative: String) -> URL { workspaceRoot.appending(path: relative) }

@@ -53,7 +53,8 @@ final class TemporaryDirectory: @unchecked Sendable {
             homeDirectory: url,
             userID: 501,
             environment: environment,
-            pathOverrides: overrides
+            pathOverrides: overrides,
+            systemRoot: url.appending(path: "system-root")
         )
     }
 }
