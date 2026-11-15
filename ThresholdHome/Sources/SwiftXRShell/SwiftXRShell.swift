@@ -106,7 +106,6 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
         systemOverlay?.shutdown()
         externalActivityMonitor.shutdown()
         externalLauncher.shutdown()
-        shellModel?.steamLibrary.shutdown()
         removeDesktopEscapeMonitor()
         if let trackedEscapeMonitor { NSEvent.removeMonitor(trackedEscapeMonitor) }
         homePointerCapture?.stop()
@@ -137,9 +136,7 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
             print("[overlay] could not load settings; using Home/PS button: \(error)")
         }
 
-        let model = ShellModel(
-            steamLibrary: SteamGameLibrary(configuration: settings.steamGames)
-        )
+        let model = ShellModel()
         self.shellModel = model
         try createShellXRPresentation(model: model)
         trackedEscapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -155,7 +152,6 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
             return nil
         }
         observeModelChanges(model)
-        model.steamLibrary.reload()
 
         let systemOverlay = ShellSystemOverlayController(
             triggerButton: settings.systemOverlayButton
@@ -721,7 +717,6 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         model.objectWillChange.sink { _ in redraw() }.store(in: &modelObservations)
-        model.steamLibrary.objectWillChange.sink { _ in redraw() }.store(in: &modelObservations)
     }
 
     private func updateCompanionWindow() {

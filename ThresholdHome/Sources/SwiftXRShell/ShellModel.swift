@@ -139,14 +139,7 @@ final class ShellModel: ObservableObject {
     /// The external app being started, running or stopped, if any.
     @Published var externalActivity: ShellExternalActivity?
 
-    /// Windows games from macOS Steam's library (macos-wine-xr's steam_games.py).
-    let steamLibrary: SteamGameLibrary
-
     var commandHandler: ((ShellCommand) -> Void)?
-
-    init(steamLibrary: SteamGameLibrary = SteamGameLibrary(configuration: .default)) {
-        self.steamLibrary = steamLibrary
-    }
 
     private var externalApplications: [ShellApplication] = []
     private var resumeApplication: ShellApplication?
@@ -166,21 +159,8 @@ final class ShellModel: ObservableObject {
         return true
     }
 
-    func launch(_ game: SteamGame) {
-        guard game.isInstalled else { return }
-        launch(steamLibrary.configuration.application(for: game))
-    }
-
     func stopExternalApplication() {
         commandHandler?(.stopExternalApplication)
-    }
-
-    func externalActivity(for game: SteamGame) -> ShellExternalActivity? {
-        guard let externalActivity,
-              externalActivity.applicationID == steamLibrary.configuration
-              .application(for: game).id
-        else { return nil }
-        return externalActivity
     }
 
     func setExternalApplicationsEnabled(_ enabled: Bool) {

@@ -84,10 +84,6 @@ struct ShellHomeView: View {
                         }
                     }
                     .padding(.vertical, 4)
-
-                    SteamGamesSection(model: model, library: model.steamLibrary)
-                        .padding(.top, 22)
-                        .padding(.bottom, 4)
                 }
 
                 HStack {

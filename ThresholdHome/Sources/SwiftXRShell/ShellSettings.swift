@@ -11,16 +11,11 @@ struct ShellSettings: Sendable {
     static let homeWidthRange: ClosedRange<Float> = 1.5...5.0
 
     var systemOverlayButton: ShellOverlayButton = .home
-    var steamGames: SteamGamesConfiguration = .default
     /// Width of the Home panel at the standard 1.8 m viewing distance.
     var homeWidthMeters: Float = defaultHomeWidthMeters
 
     private struct Document: Codable {
         var systemOverlayButton: ShellOverlayButton?
-        /// macos-wine-xr's tools/steam_games/steam_games.py.
-        var steamGamesTool: String?
-        /// The rig's run-windows-game.zsh.
-        var windowsGameRunner: String?
         /// Home panel width in metres (1.5–5.0; default 3.0).
         var homeWidthMeters: Float?
     }
@@ -55,16 +50,8 @@ struct ShellSettings: Sendable {
             Document.self,
             from: Data(contentsOf: url)
         )
-        var steamGames = SteamGamesConfiguration.default
-        if let path = document.steamGamesTool, !path.isEmpty {
-            steamGames.toolURL = expandedFileURL(path)
-        }
-        if let path = document.windowsGameRunner, !path.isEmpty {
-            steamGames.runnerURL = expandedFileURL(path)
-        }
         return ShellSettings(
             systemOverlayButton: document.systemOverlayButton ?? .home,
-            steamGames: steamGames,
             homeWidthMeters: clampedHomeWidth(document.homeWidthMeters)
         )
     }
@@ -82,10 +69,6 @@ struct ShellSettings: Sendable {
         }
         return (try? load().homeWidthMeters) ?? defaultHomeWidthMeters
     }()
-
-    private static func expandedFileURL(_ path: String) -> URL {
-        URL(fileURLWithPath: (path as NSString).expandingTildeInPath).standardizedFileURL
-    }
 }
 
 private extension JSONEncoder {

@@ -96,7 +96,7 @@ Run `swift test` for routing, hit-testing and redraw regression checks. With a c
 
 Run `SWIFTXR_TEST_RUNTIME=1 swift test --filter HomeFrameLoopTests` **separately** to check that XR rendering continues through a deliberate 600 ms main-thread stall. This test briefly begins an XR session. Do not run it concurrently with the controller runtime test: the OpenXR loader allows one live instance per process. The log distinguishes `[xr-home]` headset frames/rendered frames from `[timing] home UI` updates and reports maximum frame gaps and UI update times.
 
-`SWIFTXR_TEST_HOME_PERFORMANCE=1 swift test --filter HomePanelPerformanceTests` measures capture costs while scrolling the installed Steam library; it does not launch games.
+`SWIFTXR_TEST_HOME_PERFORMANCE=1 swift test --filter HomePanelPerformanceTests` measures capture costs while scrolling Home filled with the shared application list; it does not launch games.
 
 ## Desktop status window and menus
 
@@ -160,17 +160,22 @@ reported as a crash. threshold-runtime apps get a 120 s wait for their OpenXR cl
 screen while they load, and are given 10 s to stop, enough for threshold-run to stop the app and
 restore its files. If one source cannot be read, the other's applications are still listed.
 
-### Steam launch diagnostics
+### Steam games
 
-Windows Steam entries run through the configured Wine runner. The runner
-provisions the Win64 Khronos `openxr_loader.dll` into the selected prefix for
-xrizer. The host Mac's OpenXR loader dylib is a separate component.
+The shared list's third source is macOS Steam: every game Steam reports fully installed
+(`appmanifest_<appid>.acf` in each library in `steamapps/libraryfolders.vdf`) that supports
+VR according to Steam's offline app info (`appcache/appinfo.vdf`: OpenVR, OpenXR or
+VR-only support, or a VR launch entry). Nothing signs in or downloads; games are installed
+in Steam itself, through Steam Play (macos-wine-xr's `docs/steam-play.md`).
 
-The normal Steam launch entry is preserved. If it is 32-bit and the selected
-Wine runtime lacks WoW64's 32-bit `ntdll.dll`, a preflight rejects it with the
-specific compatibility error. Assetto Corsa's default launcher is such an entry;
-it is not silently replaced with the 64-bit race engine. Failed runner output
-is captured and shown in Home with a Dismiss action, as well as in `shell.log`.
+A Steam game starts through the running Steam client, as Play does, so Steam Play, the
+game's Launch Options (`MWXR_ALYX=native`, `MWXR_UEVR=1`, ...) and first-run setup apply:
+`steam://launch/<appid>/VR` when the game has a VR launch entry, otherwise
+`steam://rungameid/<appid>`. Steam must already be running from Steam Play.app; the launch
+is refused otherwise, since opening the URL would start plain Steam.app with Steam Play
+off. Home follows the game's top process (Steam Play's `mwxr-steam-play`, found by its
+install folder in the process arguments) and Stop sends SIGTERM to the rig's runner, which
+closes the game; it is forced after 20 s. Wine and setup get 180 s to reach Monado.
 
 ### Monado handoff
 

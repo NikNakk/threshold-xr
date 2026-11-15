@@ -35,14 +35,10 @@ struct PanelRefreshTests {
 struct HomePanelPerformanceTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["SWIFTXR_TEST_HOME_PERFORMANCE"] == "1"))
     func measureScrollSnapshotsWithInstalledLibrary() async throws {
-        let library = SteamGameLibrary(configuration: .default)
-        library.reload()
-        let deadline = Date().addingTimeInterval(20)
-        while library.loadState == .loading && Date() < deadline {
-            try await Task.sleep(for: .milliseconds(25))
-        }
-        #expect(library.loadState == .loaded)
-        let model = ShellModel(steamLibrary: library)
+        let loaded = await Task.detached { ExternalApplicationCatalog.load() }.value
+        #expect(!loaded.applications.isEmpty)
+        let model = ShellModel()
+        model.replaceExternalApplications(loaded.applications)
         model.setExternalApplicationsEnabled(true)
         let device = try #require(MTLCreateSystemDefaultDevice())
         let panel = try XRSwiftUIPanel(device: device, pointSize: CGSize(width: 1280, height: 720), scale: 1) {
