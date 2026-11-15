@@ -68,19 +68,29 @@ struct ShellHomeView: View {
                 }
 
                 ScrollView {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 22) {
-                        ForEach(model.applications) { application in
-                            let isEnabled = model.isLaunchEnabled(application)
-                            Button {
-                                model.launch(application)
-                            } label: {
-                                ShellApplicationTile(
-                                    application: application,
-                                    isEnabled: isEnabled
-                                )
+                    VStack(alignment: .leading, spacing: 18) {
+                        ForEach(model.applicationSections) { section in
+                            if let title = section.title {
+                                Text(title)
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(.white.opacity(0.6))
+                                    .padding(.top, 8)
                             }
-                            .buttonStyle(.plain)
-                            .disabled(!isEnabled)
+                            LazyVGrid(columns: columns, alignment: .leading, spacing: 22) {
+                                ForEach(section.applications) { application in
+                                    let isEnabled = model.isLaunchEnabled(application)
+                                    Button {
+                                        model.launch(application)
+                                    } label: {
+                                        ShellApplicationTile(
+                                            application: application,
+                                            isEnabled: isEnabled
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(!isEnabled)
+                                }
+                            }
                         }
                     }
                     .padding(.vertical, 4)

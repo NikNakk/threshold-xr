@@ -53,3 +53,17 @@ struct SharedCatalogTests {
         #expect(summary == "loading\nerror: no host")
     }
 }
+
+@MainActor
+struct HomeSectionTests {
+    @Test func externalAppsAreGroupedBySource() {
+        let model = ShellModel()
+        let paint = LaunchTarget(id: "paint", title: "Paint", url: URL(fileURLWithPath: "/Applications/Paint.app"))
+        let game = LaunchTarget(steamGame: SteamGame(appID: 1, name: "Game", installFolder: URL(fileURLWithPath: "/g"), hasVRLaunch: true))
+        model.replaceExternalApplications([paint, game].map(ShellApplication.init(target:)))
+        let sections = model.applicationSections
+        #expect(sections.map(\.title) == [nil, "Manually configured", "Steam"])
+        #expect(sections[0].applications.map(\.id).contains("swiftxr.video"))
+        #expect(sections[2].applications.map(\.id) == ["steam.1"])
+    }
+}

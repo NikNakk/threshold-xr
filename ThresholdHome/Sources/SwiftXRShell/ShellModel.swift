@@ -68,6 +68,21 @@ struct ShellApplication: Identifiable, Hashable, Sendable {
     }
 }
 
+/// A titled group of Home tiles.
+struct ShellApplicationSection: Identifiable {
+    var title: String?
+    var applications: [ShellApplication]
+    var id: String { title ?? "home" }
+}
+
+extension ShellApplication {
+    /// The shared-list source of an external application; nil for Home's own apps.
+    var source: ApplicationCatalog.Source? {
+        if case let .external(external) = kind { return external.target.source }
+        return nil
+    }
+}
+
 /// An application Home starts and hands the headset to: a shared
 /// `LaunchTarget` (ThresholdCore) plus how Home handles its start-up.
 struct ExternalOpenXRApplication: Hashable, Sendable {
@@ -185,6 +200,17 @@ final class ShellModel: ObservableObject {
         guard resumeApplication != nil else { return }
         resumeApplication = nil
         rebuildApplications()
+    }
+
+    /// Home's built-in apps first (untitled), then the shared list's sources
+    /// under the same headings Threshold XR uses. Empty sources are left out.
+    var applicationSections: [ShellApplicationSection] {
+        var sections = [ShellApplicationSection(title: nil, applications: applications.filter { $0.source == nil })]
+        for source in ApplicationCatalog.Source.allCases {
+            let members = applications.filter { $0.source == source }
+            if !members.isEmpty { sections.append(ShellApplicationSection(title: source.title, applications: members)) }
+        }
+        return sections
     }
 
     private func rebuildApplications() {

@@ -35,32 +35,43 @@ struct ApplicationsView: View {
 
     // MARK: Catalog
 
+    @ViewBuilder
+    private func section(_ source: ApplicationCatalog.Source) -> some View {
+        let targets = model.applications.targets(from: source)
+        Text(source.title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.top, source == .shellCatalog ? 4 : 16)
+            .padding(.bottom, 4)
+        if let error = model.applications.problem(source) {
+            Label(error, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+                .padding(8)
+        } else if targets.isEmpty {
+            Text(emptyText(source))
+                .foregroundStyle(.secondary)
+                .padding(8)
+        }
+        ForEach(targets) { target in
+            Divider()
+            ApplicationRow(target: target)
+        }
+    }
+
+    private func emptyText(_ source: ApplicationCatalog.Source) -> String {
+        switch source {
+        case .shellCatalog: return "Nothing in apps.json. Add applications to it, then reload."
+        case .framework: return "threshold-runtime provides no applications."
+        case .steam: return "Steam has no VR games installed."
+        }
+    }
+
     private var catalog: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 0) {
-                if let error = model.shellAppsError {
-                    Label("The catalog could not be read: \(error)", systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                        .padding(8)
-                }
-                if let error = model.frameworkProfilesError {
-                    Label("threshold-runtime's applications could not be listed: \(error)", systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                        .padding(8)
-                }
-                if let error = model.steamLibraryError {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                        .padding(8)
-                }
-                if model.shellAppsError == nil, model.launchTargets.isEmpty {
-                    Text("Threshold Home's catalog is empty. Add applications to it, then reload.")
-                        .foregroundStyle(.secondary)
-                        .padding(8)
-                }
-                ForEach(model.launchTargets) { target in
-                    ApplicationRow(target: target)
-                    if target.id != model.launchTargets.last?.id { Divider() }
+                ForEach([ApplicationCatalog.Source.shellCatalog, .framework, .steam], id: \.self) { source in
+                    section(source)
                 }
             }
         } label: {

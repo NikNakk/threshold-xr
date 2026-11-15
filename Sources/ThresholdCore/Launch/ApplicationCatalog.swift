@@ -6,10 +6,24 @@ import Foundation
 /// games macOS Steam has installed. Both apps load this one list, so an app
 /// added to any source appears in both.
 public struct ApplicationCatalog: Sendable, Equatable {
-    public enum Source: String, Sendable, Equatable {
+    public enum Source: String, Sendable, Hashable, CaseIterable {
         case shellCatalog
         case framework
         case steam
+
+        /// The heading both apps show for this source's applications.
+        public var title: String {
+            switch self {
+            case .shellCatalog: return "Manually configured"
+            case .framework: return "Threshold Runtime"
+            case .steam: return "Steam"
+            }
+        }
+    }
+
+    /// The applications from one source, in list order.
+    public func targets(from source: Source) -> [LaunchTarget] {
+        targets.filter { $0.source == source }
     }
 
     /// A source that could not be read; the other source's apps are still listed.

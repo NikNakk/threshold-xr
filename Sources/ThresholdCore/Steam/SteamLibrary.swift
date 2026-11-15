@@ -12,6 +12,14 @@ public struct SteamGame: Sendable, Hashable, Identifiable {
     public var coverArt: URL?
 
     public var id: UInt32 { appID }
+
+    public init(appID: UInt32, name: String, installFolder: URL, hasVRLaunch: Bool, coverArt: URL? = nil) {
+        self.appID = appID
+        self.name = name
+        self.installFolder = installFolder
+        self.hasVRLaunch = hasVRLaunch
+        self.coverArt = coverArt
+    }
 }
 
 /// Reads macOS Steam's own files, offline and without signing in:

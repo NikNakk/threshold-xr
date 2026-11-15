@@ -69,9 +69,6 @@ final class AppModel {
     var lastBackup: URL?
     /// Threshold Home's catalog and threshold-runtime's applications, shared with Threshold Home.
     var applications = ApplicationCatalog()
-    var shellAppsError: String? { applications.problem(.shellCatalog) }
-    var frameworkProfilesError: String? { applications.problem(.framework) }
-    var steamLibraryError: String? { applications.problem(.steam) }
 
     /// Direct launches and their status.
     let launches: LaunchCoordinator

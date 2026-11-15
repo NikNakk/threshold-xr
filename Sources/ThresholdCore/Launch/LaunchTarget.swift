@@ -117,6 +117,15 @@ public struct LaunchTarget: Sendable, Hashable, Identifiable {
         stopGracePeriod = 20
     }
 
+    /// Which part of the application list this target comes from.
+    public var source: ApplicationCatalog.Source {
+        switch kind {
+        case .frameworkProfile: return .framework
+        case .steamGame: return .steam
+        case .appBundle, .executable: return .shellCatalog
+        }
+    }
+
     /// The executable name macOS uses in crash reports.
     public var processName: String {
         if let hostProcessName { return hostProcessName }
