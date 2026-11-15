@@ -69,6 +69,9 @@ final class AppModel {
     var lastBackup: URL?
     var shellApps: [ShellAppEntry] = []
     var shellAppsError: String?
+    /// Applications threshold-runtime provides (threshold-run --list).
+    var frameworkProfiles: [FrameworkProfile] = []
+    var frameworkProfilesError: String?
 
     /// Direct launches and their status.
     let launches: LaunchCoordinator
@@ -156,6 +159,18 @@ final class AppModel {
         } catch {
             shellApps = []
             shellAppsError = error.localizedDescription
+        }
+        // threshold-run --list reads profiles and checks component files; off the main thread.
+        let profiles = await Task.detached(priority: .userInitiated) {
+            Result { try FrameworkCatalog.load(context: context) }
+        }.value
+        switch profiles {
+        case let .success(found):
+            frameworkProfiles = found
+            frameworkProfilesError = nil
+        case let .failure(error):
+            frameworkProfiles = []
+            frameworkProfilesError = error.localizedDescription
         }
     }
 
@@ -251,9 +266,11 @@ final class AppModel {
 
     // MARK: Direct launch
 
-    /// Threshold Home's catalog, as launch targets (one shared app list).
+    /// Threshold Home's catalog and threshold-runtime's applications, as launch targets.
     var launchTargets: [LaunchTarget] {
-        shellApps.map { LaunchTarget(entry: $0, context: context) }
+        let runner = FrameworkCatalog.runner(context: context)
+        return shellApps.map { LaunchTarget(entry: $0, context: context) }
+            + frameworkProfiles.map { LaunchTarget(profile: $0, runner: runner) }
     }
 
     func launch(_ target: LaunchTarget) {

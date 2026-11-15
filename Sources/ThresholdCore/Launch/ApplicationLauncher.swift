@@ -74,6 +74,8 @@ public struct DirectLauncher: ApplicationLaunching {
             return try ExecutableProcess.start(target, environment: merged, logDirectory: logDirectory)
         case .appBundle:
             return try await BundleProcess.open(target, environment: merged)
+        case .frameworkProfile:
+            return try FrameworkLauncher.start(target, environment: merged, logDirectory: logDirectory)
         }
     }
 }

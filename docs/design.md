@@ -165,7 +165,9 @@ This keeps several things separate:
 - game-specific fixes and data
 - xrizer's GPL (it stays a separately built library loaded by applications)
 
-Milestone 1 already follows this: it only *reads* `run-alyx-profile` to show which builds are in use, and launches nothing from the framework. Milestone 2's launcher should be a thin `ApplicationLauncher` protocol, with three implementations:
+Milestone 1 already follows this: it only *reads* `run-alyx-profile` to show which builds are in use, and launches nothing from the framework.
+
+**Implemented 15 November 2026.** threshold-runtime publishes profiles (`profiles/<id>.json`) and one launch command, `bin/threshold-run`, with a JSON-lines status file (started, stopping, exited with exit code, signal, stopped-by and crashed). Threshold XR lists them with `threshold-run --list --json` (`FrameworkCatalog`), adds them to the Applications list as `.frameworkProfile` targets, blocks launches whose components are missing, and starts them through `FrameworkLauncher`, which maps the status file to a `ProcessExit` (a guest crash is a crash even when threshold-run itself exits normally). Component discovery still reads `run-alyx-profile` for the builds in use. Milestone 2's launcher should be a thin `ApplicationLauncher` protocol, with three implementations:
 
 - framework launch command (Alyx, Quest apps)
 - plain `.app` or executable (native OpenXR apps)
@@ -175,7 +177,7 @@ The `alyx-host` and `quest-host` components in Threshold XR then become "provide
 
 ## 7. Proposed Milestone 2
 
-1. **Applications.** *Done for native apps:* direct launch through `ApplicationLaunching` (`DirectLauncher` for bundles and executables), followed by `LaunchCoordinator` with status, crash detection and per-launch logs. Still to come: the Windows runner and threshold-runtime launchers behind the same protocol, and editing the shared `apps.json` catalog.
+1. **Applications.** *Done for native apps:* direct launch through `ApplicationLaunching` (`DirectLauncher` for bundles and executables), followed by `LaunchCoordinator` with status, crash detection and per-launch logs. threshold-runtime applications launch through `FrameworkLauncher` (§6). Still to come: the Windows runner behind the same protocol, and editing the shared `apps.json` catalog.
 2. **Live readiness.** Watch launchd job state with a `DispatchSource` process monitor on the service PID, instead of polling every 3 s.
 3. **Headset controls.** Add recentre and floor calibration (the `mnd_root_recenter_local_spaces` family) and brightness, gated by the same connection-safety policy.
 4. **Component manifest, read-only first.** Add the manifest format, adopt existing installs as `external` releases, and show the "known stack vs. installed" comparison. Install and rollback come after that.

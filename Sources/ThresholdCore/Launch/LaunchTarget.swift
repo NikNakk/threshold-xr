@@ -7,6 +7,8 @@ public struct LaunchTarget: Sendable, Equatable, Identifiable {
         case appBundle
         /// An executable or script, run as a child process with its output logged.
         case executable
+        /// An application the guest-app framework provides, started through threshold-run.
+        case frameworkProfile
     }
 
     public var id: String
@@ -21,6 +23,12 @@ public struct LaunchTarget: Sendable, Equatable, Identifiable {
     /// The OpenXR application name the app reports, used to recognise its
     /// Monado client.
     public var openXRApplicationName: String?
+    /// The framework profile this target starts (kind `.frameworkProfile`).
+    public var frameworkProfileID: String?
+    /// Reasons the target cannot start, known before launch (missing components).
+    public var unavailableReasons: [String] = []
+    /// The executable macOS names in crash reports, when it is not the target's own.
+    public var hostProcessName: String?
 
     public init(
         id: String,
@@ -58,8 +66,26 @@ public struct LaunchTarget: Sendable, Equatable, Identifiable {
         )
     }
 
+    /// A target for a framework application: threshold-run with the profile's id.
+    public init(profile: FrameworkProfile, runner: URL) {
+        self.init(
+            id: "threshold-runtime.\(profile.id)",
+            title: profile.title,
+            subtitle: profile.subtitle,
+            systemImage: profile.systemImage,
+            url: runner,
+            kind: .frameworkProfile,
+            arguments: [profile.id],
+            openXRApplicationName: profile.openXRApplicationName
+        )
+        frameworkProfileID = profile.id
+        unavailableReasons = profile.missingComponents.map { "missing \($0)" }
+        hostProcessName = profile.hostProcessName
+    }
+
     /// The executable name macOS uses in crash reports.
     public var processName: String {
+        if let hostProcessName { return hostProcessName }
         if kind == .appBundle,
            let info = FileProbe.readPlist(url.appending(path: "Contents/Info.plist")),
            let executable = info["CFBundleExecutable"] as? String {
@@ -108,12 +134,16 @@ public enum LaunchPreflight {
             if !FileProbe.isDirectory(target.url) {
                 issues.append(.init(.blocking, "The application was not found at \(path)."))
             }
-        case .executable:
+        case .executable, .frameworkProfile:
             if !FileProbe.exists(target.url) {
                 issues.append(.init(.blocking, "The executable was not found at \(path)."))
             } else if !FileProbe.isExecutableFile(target.url) {
                 issues.append(.init(.blocking, "\(path) is not executable."))
             }
+        }
+
+        for reason in target.unavailableReasons {
+            issues.append(.init(.blocking, "\(target.title) cannot start: \(reason)."))
         }
 
         if target.environment["XR_RUNTIME_JSON"] != nil {

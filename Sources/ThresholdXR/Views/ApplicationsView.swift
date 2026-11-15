@@ -42,7 +42,13 @@ struct ApplicationsView: View {
                     Label("The catalog could not be read: \(error)", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
                         .padding(8)
-                } else if model.launchTargets.isEmpty {
+                }
+                if let error = model.frameworkProfilesError {
+                    Label("threshold-runtime's applications could not be listed: \(error)", systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                        .padding(8)
+                }
+                if model.shellAppsError == nil, model.launchTargets.isEmpty {
                     Text("Threshold Home's catalog is empty. Add applications to it, then reload.")
                         .foregroundStyle(.secondary)
                         .padding(8)
