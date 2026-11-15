@@ -9,6 +9,8 @@ public struct LaunchTarget: Sendable, Hashable, Identifiable {
         case executable
         /// An application the guest-app framework provides, started through threshold-run.
         case frameworkProfile
+        /// A game installed in macOS Steam, started by the running Steam client (`url` is a `steam://` URL).
+        case steamGame
     }
 
     public var id: String
@@ -34,6 +36,9 @@ public struct LaunchTarget: Sendable, Hashable, Identifiable {
     /// How long Stop waits after the first request before forcing it, when
     /// longer than a launcher's default.
     public var stopGracePeriod: TimeInterval?
+    /// The Steam game this target starts (kind `.steamGame`).
+    public var steamAppID: UInt32?
+    public var steamInstallFolder: URL?
 
     public init(
         id: String,
@@ -93,6 +98,25 @@ public struct LaunchTarget: Sendable, Hashable, Identifiable {
         stopGracePeriod = 10
     }
 
+    /// A target for a VR game macOS Steam has installed, started through Steam.
+    public init(steamGame game: SteamGame) {
+        self.init(
+            id: "steam.\(game.appID)",
+            title: game.name,
+            subtitle: "Steam",
+            systemImage: "gamecontroller.fill",
+            url: SteamLauncher.url(for: game),
+            kind: .steamGame,
+            openXRApplicationName: game.name
+        )
+        steamAppID = game.appID
+        steamInstallFolder = game.installFolder
+        // Wine and the game's first-run setup can come before its OpenXR client.
+        clientTimeout = 180
+        // The rig's runner closes the game and its Wine server on SIGTERM.
+        stopGracePeriod = 20
+    }
+
     /// The executable name macOS uses in crash reports.
     public var processName: String {
         if let hostProcessName { return hostProcessName }
@@ -143,6 +167,13 @@ public enum LaunchPreflight {
         case .appBundle:
             if !FileProbe.isDirectory(target.url) {
                 issues.append(.init(.blocking, "The application was not found at \(path)."))
+            }
+        case .steamGame:
+            if let folder = target.steamInstallFolder, !FileProbe.isDirectory(folder) {
+                issues.append(.init(.blocking, "\(target.title) is no longer installed in Steam."))
+            }
+            if !ProcessTable.isRunning(named: SteamLauncher.clientProcessName) {
+                issues.append(.init(.blocking, SteamLauncher.notRunningMessage))
             }
         case .executable, .frameworkProfile:
             if !FileProbe.exists(target.url) {

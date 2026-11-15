@@ -48,6 +48,11 @@ struct ApplicationsView: View {
                         .foregroundStyle(.orange)
                         .padding(8)
                 }
+                if let error = model.steamLibraryError {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                        .padding(8)
+                }
                 if model.shellAppsError == nil, model.launchTargets.isEmpty {
                     Text("Threshold Home's catalog is empty. Add applications to it, then reload.")
                         .foregroundStyle(.secondary)

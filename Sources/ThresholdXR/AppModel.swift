@@ -71,6 +71,7 @@ final class AppModel {
     var applications = ApplicationCatalog()
     var shellAppsError: String? { applications.problem(.shellCatalog) }
     var frameworkProfilesError: String? { applications.problem(.framework) }
+    var steamLibraryError: String? { applications.problem(.steam) }
 
     /// Direct launches and their status.
     let launches: LaunchCoordinator

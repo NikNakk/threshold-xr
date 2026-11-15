@@ -76,6 +76,9 @@ public struct DirectLauncher: ApplicationLaunching {
             return try await BundleProcess.open(target, environment: merged)
         case .frameworkProfile:
             return try FrameworkLauncher.start(target, environment: merged, logDirectory: logDirectory)
+        case .steamGame:
+            // Steam starts it, with Steam's environment and the game's Launch Options.
+            return try await SteamGameProcess.start(target)
         }
     }
 }
