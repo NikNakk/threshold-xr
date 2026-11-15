@@ -165,16 +165,18 @@ private final class SwiftXRShellAppDelegate: NSObject, NSApplicationDelegate {
         }
         self.systemOverlay = systemOverlay
 
-        do {
-            let externalApplications = try ExternalApplicationCatalog.loadApplications()
-            model.replaceExternalApplications(externalApplications)
+        Task { @MainActor [weak model] in
+            let loaded = await Task.detached(priority: .userInitiated) {
+                ExternalApplicationCatalog.load()
+            }.value
+            model?.replaceExternalApplications(loaded.applications)
             print(
-                "[shell] loaded \(externalApplications.count) external application(s) from "
-                    + ExternalApplicationCatalog.catalogURL.path
+                "[shell] loaded \(loaded.applications.count) external application(s) from "
+                    + "\(ExternalApplicationCatalog.catalogURL.path) and threshold-runtime"
             )
-        } catch {
-            print("[shell] could not load external application catalog: \(error)")
-            print("[shell] catalog path: \(ExternalApplicationCatalog.catalogURL.path)")
+            for problem in loaded.problems {
+                print("[shell] could not read \(problem.source.rawValue): \(problem.message)")
+            }
         }
 
         externalLauncher.onSwitchedToApplication = { [weak self] client in

@@ -26,7 +26,7 @@ It is an ordinary desktop app. It opens and works with no headset connected. It 
 - **Monado's last run**: Home shows problems from the latest run in Monado's service log (for example a compositor that could not set the display's refresh rate, or a USB interface it could not claim), and a launch notes any problem Monado logged while it ran.
 - **Headset**: PS VR2 USB presence, plus devices and clients reported by Monado when it is safe to ask.
 - **Diagnostics**: the service's log, the app's activity log, the full OpenXR runtime search order, the client-environment variables, the environment of the loaded service, and a copyable report.
-- **Applications (direct launch)**: starts apps from Threshold Home's catalog (`apps.json`, one shared list) straight into the headset, without Threshold Home.
+- **Applications (direct launch)**: starts apps from the shared application list (Threshold Home's `apps.json` plus threshold-runtime's applications, the same list Home shows) straight into the headset, without Threshold Home.
   - `.app` bundles open through Launch Services; executables and scripts run with their output logged to `~/Library/Logs/Threshold XR/Launches/<app>/`.
   - Each launch is followed through *Starting*, *Running*, *Connected* (a new Monado connection appears), *In headset* (Monado reports the matching client's session as visible or active), then *Ended*, *Crashed* (crash signal or a new macOS crash report) or *Failed*.
   - Stop sends a normal quit and forces it after 3 s.
@@ -93,7 +93,7 @@ ThresholdCore (library)          Sources/ThresholdCore
   Components/   component models, read-only discovery, Alyx play-profile reader
   Settings/     descriptors with metadata, catalog, stores
   Headset/      passive IOKit USB enumeration
-  Home/         Threshold Home (SwiftXR Shell) app catalog reader
+  Home/         Threshold Home (SwiftXR Shell) apps.json reader
   Support/      command runner, discovery context, file probes, git reader
         │
 Existing infrastructure, used as it is:

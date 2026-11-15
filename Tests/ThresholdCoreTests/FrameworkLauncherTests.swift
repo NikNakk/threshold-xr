@@ -142,3 +142,68 @@ struct FrameworkLaunchTests {
         #expect(faulted.phase == .crashed)
     }
 }
+
+@MainActor
+struct ApplicationCatalogTests {
+    @Test func listsTheShellCatalogThenFrameworkApplications() throws {
+        let home = try TemporaryDirectory()
+        var context = try runtime(home)
+        try home.write("apps.json", #"[{"id": " paint ", "title": "Paint", "path": "~/Paint.app"}]"#)
+        context.environment["SWIFTXR_SHELL_APPS"] = home.url.appending(path: "apps.json").path
+        let catalog = ApplicationCatalog.load(context: context)
+        #expect(catalog.problems.isEmpty)
+        #expect(catalog.targets.map(\.id) == ["paint", "threshold-runtime.alyx", "threshold-runtime.openbrush"])
+        #expect(catalog.targets[0].kind == .appBundle)
+        #expect(catalog.targets[1].stopGracePeriod == 10)
+        #expect(catalog.targets[1].clientTimeout == 120)
+        #expect(catalog.targets[2].unavailableReasons == ["missing host (/b/quest_host)"])
+    }
+
+    @Test func oneUnreadableSourceKeepsTheOther() throws {
+        let home = try TemporaryDirectory()
+        var context = try runtime(home)
+        try home.write("apps.json", #"[{"id": "a", "title": "A", "path": "/a"}, {"id": "a", "title": "B", "path": "/b"}]"#)
+        context.environment["SWIFTXR_SHELL_APPS"] = home.url.appending(path: "apps.json").path
+        let catalog = ApplicationCatalog.load(context: context)
+        #expect(catalog.problem(.shellCatalog) == ShellAppCatalogError.duplicateID("a").localizedDescription)
+        #expect(catalog.problem(.framework) == nil)
+        #expect(catalog.targets.count == 2)
+
+        context.environment["THRESHOLD_RUNTIME"] = home.url.appending(path: "none").path
+        context.environment["SWIFTXR_SHELL_APPS"] = home.url.appending(path: "missing.json").path
+        let noRuntime = ApplicationCatalog.load(context: context)
+        #expect(noRuntime.targets.isEmpty)
+        #expect(noRuntime.problem(.framework) != nil)
+        #expect(noRuntime.problem(.shellCatalog) == nil)
+    }
+
+    @Test func invalidEntriesAreRejected() {
+        #expect(throws: ShellAppCatalogError.emptyTitle("x")) {
+            try ShellAppCatalog.decode(Data(#"[{"id": "x", "title": " ", "path": "/x"}]"#.utf8))
+        }
+        #expect(throws: ShellAppCatalogError.emptyID) {
+            try ShellAppCatalog.decode(Data(#"[{"id": "", "title": "X", "path": "/x"}]"#.utf8))
+        }
+    }
+
+    @Test func stopWaitsForTheFrameworkRunner() async throws {
+        let home = try TemporaryDirectory()
+        // Ignores SIGTERM, as threshold-run does while it stops the app.
+        let runner = try home.write("rt/bin/threshold-run", "#!/bin/sh\ntrap '' TERM\nsleep 30\n", executable: true)
+        var target = LaunchTarget(profile: try profile("alyx"), runner: runner)
+        target.stopGracePeriod = 1
+        let coordinator = LaunchCoordinator(
+            launcher: DirectLauncher(environment: ["PATH": "/usr/bin:/bin"]),
+            crashFinder: CrashReportFinder(directories: []),
+            logDirectory: home.url.appending(path: "logs"),
+            stopGracePeriod: .milliseconds(100),
+            crashReportDelay: .milliseconds(10)
+        )
+        let id = try await coordinator.launch(target, monado: nil)
+        let started = Date()
+        coordinator.stop(id)
+        let record = try await waitUntilEnded(coordinator, id)
+        #expect(Date().timeIntervalSince(started) >= 0.9)
+        #expect(record.exit == .signaled(SIGKILL))
+    }
+}

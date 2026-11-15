@@ -177,7 +177,7 @@ The `alyx-host` and `quest-host` components in Threshold XR then become "provide
 
 ## 7. Proposed Milestone 2
 
-1. **Applications.** *Done for native apps:* direct launch through `ApplicationLaunching` (`DirectLauncher` for bundles and executables), followed by `LaunchCoordinator` with status, crash detection and per-launch logs. threshold-runtime applications launch through `FrameworkLauncher` (§6). Still to come: the Windows runner behind the same protocol, and editing the shared `apps.json` catalog.
+1. **Applications.** *Done for native apps:* direct launch through `ApplicationLaunching` (`DirectLauncher` for bundles and executables), followed by `LaunchCoordinator` with status, crash detection and per-launch logs. threshold-runtime applications launch through `FrameworkLauncher` (§6). Threshold XR and Threshold Home share the application list (`ApplicationCatalog`: `apps.json` plus threshold-runtime's applications) and the process launcher (`DirectLauncher`); Home adds only the headset handoff. Still to come: the Windows runner behind the same protocol, and editing the shared `apps.json` catalog.
 2. **Live readiness.** Watch launchd job state with a `DispatchSource` process monitor on the service PID, instead of polling every 3 s.
 3. **Headset controls.** Add recentre and floor calibration (the `mnd_root_recenter_local_spaces` family) and brightness, gated by the same connection-safety policy.
 4. **Component manifest, read-only first.** Add the manifest format, adopt existing installs as `external` releases, and show the "known stack vs. installed" comparison. Install and rollback come after that.

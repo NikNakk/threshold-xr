@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import ThresholdCore
 
 @MainActor
 enum ShellCommand {
@@ -67,18 +68,48 @@ struct ShellApplication: Identifiable, Hashable, Sendable {
     }
 }
 
+/// An application Home starts and hands the headset to: a shared
+/// `LaunchTarget` (ThresholdCore) plus how Home handles its start-up.
 struct ExternalOpenXRApplication: Hashable, Sendable {
-    let executableURL: URL
-    var arguments: [String] = []
-    var environment: [String: String] = [:]
-    var openXRApplicationName: String?
+    var target: LaunchTarget
     /// How long to wait for the app's Monado client before giving up.
-    var openXRClientTimeout: TimeInterval = 30
-    /// How long Stop waits after SIGTERM before SIGKILL.
-    var stopGracePeriod: TimeInterval = 2
+    var openXRClientTimeout: TimeInterval
+    /// How long Stop waits after the first request before forcing it.
+    var stopGracePeriod: TimeInterval
     /// Keep Home on screen (with Stop) until the app's client takes the HMD,
     /// instead of an empty view for the whole start-up.
-    var showsHomeWhileStarting = false
+    var showsHomeWhileStarting: Bool
+
+    init(
+        target: LaunchTarget,
+        openXRClientTimeout: TimeInterval? = nil,
+        stopGracePeriod: TimeInterval? = nil,
+        showsHomeWhileStarting: Bool? = nil
+    ) {
+        self.target = target
+        self.openXRClientTimeout = openXRClientTimeout ?? target.clientTimeout ?? 30
+        self.stopGracePeriod = stopGracePeriod ?? target.stopGracePeriod ?? 2
+        // Apps known to start slowly keep Home on screen while they load.
+        self.showsHomeWhileStarting = showsHomeWhileStarting ?? (target.clientTimeout != nil)
+    }
+
+    var executableURL: URL { target.url }
+    var arguments: [String] { target.arguments }
+    var environment: [String: String] { target.environment }
+    var openXRApplicationName: String? { target.openXRApplicationName }
+}
+
+extension ShellApplication {
+    /// A Home tile for an application from the shared catalog.
+    init(target: LaunchTarget) {
+        self.init(
+            id: target.id,
+            title: target.title,
+            subtitle: target.subtitle ?? "OpenXR application",
+            systemImage: target.systemImage ?? "arkit",
+            kind: .external(ExternalOpenXRApplication(target: target))
+        )
+    }
 }
 
 /// The external app the launcher is handling, as shown in Home.

@@ -2,9 +2,11 @@ import AppKit
 import Darwin
 import Foundation
 import SwiftXR
+import ThresholdCore
 
 enum ExternalOpenXRLauncherError: Error, LocalizedError {
     case alreadyLaunching
+    case blocked(String)
     case applicationNotFound(String)
     case executableNotExecutable(String)
     case shellClientNotFound
@@ -17,6 +19,8 @@ enum ExternalOpenXRLauncherError: Error, LocalizedError {
         switch self {
         case .alreadyLaunching:
             return "An external OpenXR application is already running"
+        case let .blocked(message):
+            return message
         case let .applicationNotFound(path):
             return "External application was not found at \(path)"
         case let .executableNotExecutable(path):
@@ -54,10 +58,21 @@ final class ExternalOpenXRLauncher {
     private var stopRequested = false
     private var currentApplication: ShellApplication?
 
-    private var process: Process?
-    private var processOutput: Pipe?
-    private var outputTail = LaunchOutputTail()
-    private var runningApplication: NSRunningApplication?
+    /// Starts processes the same way Threshold XR does (ThresholdCore), with
+    /// per-launch logs in ~/Library/Logs/Threshold XR/Launches.
+    private let launcher: any ApplicationLaunching
+    private let logDirectory: URL
+    private var launchTask: Task<Void, Never>?
+    private var launched: (any LaunchedProcess)?
+    private var exit: ProcessExit?
+
+    init(
+        launcher: any ApplicationLaunching = DirectLauncher(),
+        logDirectory: URL = LaunchLog.defaultDirectory(home: FileManager.default.homeDirectoryForCurrentUser)
+    ) {
+        self.launcher = launcher
+        self.logDirectory = logDirectory
+    }
 
     var isRunningExternalApplication: Bool {
         currentApplication != nil
@@ -72,9 +87,9 @@ final class ExternalOpenXRLauncher {
             throw ExternalOpenXRLauncherError.alreadyLaunching
         }
 
-        let url = external.executableURL
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            throw ExternalOpenXRLauncherError.applicationNotFound(url.path)
+        let issues = LaunchPreflight.check(external.target, monado: nil, alreadyRunning: false)
+        if let blocking = issues.first(where: { $0.severity == .blocking }) {
+            throw ExternalOpenXRLauncherError.blocked(blocking.message)
         }
 
         let monado = try monado ?? XRMonadoRuntimeControl()
@@ -98,114 +113,53 @@ final class ExternalOpenXRLauncher {
         stopGracePeriod = external.stopGracePeriod
         launchDeadline = Date().addingTimeInterval(external.openXRClientTimeout)
 
-        if url.pathExtension.caseInsensitiveCompare("app") == .orderedSame {
-            launchBundle(external)
-        } else {
+        let target = external.target
+        launchTask = Task { @MainActor [weak self] in
+            guard let self else { return }
             do {
-                try launchExecutable(external)
-                startMonitoring()
+                let process = try await self.launcher.launch(target, logDirectory: self.logDirectory)
+                guard self.currentApplication?.id == application.id, self.launchTask != nil else {
+                    process.requestStop()
+                    return
+                }
+                self.launched = process
+                if let log = process.logURL { print("[shell] \(application.title) log: \(log.path)") }
+                Task { @MainActor [weak self] in
+                    let exit = await process.waitForExit()
+                    guard let self, self.launched === process else { return }
+                    self.exit = exit
+                    print("[shell] \(application.title) ended: \(exit.description)")
+                }
+                if self.stopRequested {
+                    process.requestStop()
+                    self.scheduleForcedTermination()
+                }
+                self.startMonitoring()
             } catch {
-                clearLaunchState()
-                throw error
+                guard self.currentApplication?.id == application.id else { return }
+                self.fail(error)
             }
         }
     }
 
     func terminateForegroundApplication() throws {
-        let title = currentApplication?.title ?? "OpenXR application"
+        guard currentApplication != nil else {
+            throw ExternalOpenXRLauncherError.couldNotTerminate("OpenXR application")
+        }
         stopRequested = true
-
-        if let process {
-            if process.isRunning {
-                process.terminate()
-                scheduleForcedTermination()
-            }
-            return
-        }
-
-        if let runningApplication {
-            if runningApplication.isTerminated {
-                return
-            }
-            if runningApplication.terminate() {
-                scheduleForcedTermination()
-                return
-            }
-            if runningApplication.forceTerminate() {
-                return
-            }
-        }
-
-        throw ExternalOpenXRLauncherError.couldNotTerminate(title)
+        // Still starting: the launch task stops it once it has a process.
+        guard let launched, exit == nil else { return }
+        launched.requestStop()
+        scheduleForcedTermination()
     }
 
     func shutdown() {
+        launchTask?.cancel()
         monitorTask?.cancel()
         monitorTask = nil
         terminationFallbackTask?.cancel()
         terminationFallbackTask = nil
         clearLaunchState()
-    }
-
-    private func launchBundle(_ external: ExternalOpenXRApplication) {
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.arguments = external.arguments
-        configuration.environment = mergedEnvironment(overrides: external.environment)
-        configuration.activates = true
-        configuration.addsToRecentItems = false
-        configuration.createsNewApplicationInstance = true
-
-        NSWorkspace.shared.openApplication(
-            at: external.executableURL,
-            configuration: configuration
-        ) { [weak self] runningApplication, error in
-            Task { @MainActor in
-                guard let self, self.currentApplication != nil else { return }
-
-                if let error {
-                    self.fail(error)
-                    return
-                }
-                guard let runningApplication else {
-                    self.fail(
-                        ExternalOpenXRLauncherError.launchedApplicationExited(
-                            self.currentApplication?.title ?? external.executableURL.lastPathComponent
-                        )
-                    )
-                    return
-                }
-
-                self.runningApplication = runningApplication
-                self.startMonitoring()
-            }
-        }
-    }
-
-    private func launchExecutable(_ external: ExternalOpenXRApplication) throws {
-        let path = external.executableURL.path
-        guard FileManager.default.isExecutableFile(atPath: path) else {
-            throw ExternalOpenXRLauncherError.executableNotExecutable(path)
-        }
-
-        let process = Process()
-        process.executableURL = external.executableURL
-        process.arguments = external.arguments
-        process.environment = mergedEnvironment(overrides: external.environment)
-        process.currentDirectoryURL = external.executableURL.deletingLastPathComponent()
-        let output = Pipe()
-        let tail = LaunchOutputTail()
-        outputTail = tail
-        output.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            guard !data.isEmpty else { handle.readabilityHandler = nil; return }
-            tail.append(data)
-            FileHandle.standardError.write(data)
-        }
-        process.standardOutput = output
-        process.standardError = output
-        processOutput = output
-        try process.run()
-        self.process = process
     }
 
     private func startMonitoring() {
@@ -226,15 +180,9 @@ final class ExternalOpenXRLauncher {
             try? await Task.sleep(nanoseconds: UInt64(grace * 1_000_000_000))
             guard let self, !Task.isCancelled, self.currentApplication != nil else { return }
 
-            if let process = self.process, process.isRunning {
-                print("[shell] launched process ignored terminate; sending SIGKILL")
-                _ = Darwin.kill(process.processIdentifier, SIGKILL)
-            }
-
-            if let runningApplication = self.runningApplication,
-               !runningApplication.isTerminated {
-                print("[shell] launched application ignored terminate; force terminating")
-                _ = runningApplication.forceTerminate()
+            if let launched = self.launched, self.exit == nil {
+                print("[shell] launched application ignored the stop request; forcing it")
+                launched.forceStop()
             }
         }
     }
@@ -292,13 +240,18 @@ final class ExternalOpenXRLauncher {
             }
 
             if launchedApplicationHasExited {
-                if let process, process.terminationStatus != 0 {
+                switch exit {
+                case let .exited(status) where status != 0:
                     throw ExternalOpenXRLauncherError.executableFailed(
-                        title: application.title, status: process.terminationStatus,
-                        detail: outputTail.summary
+                        title: application.title, status: status, detail: logSummary
                     )
+                case let .signaled(signal):
+                    throw ExternalOpenXRLauncherError.executableFailed(
+                        title: application.title, status: 128 + signal, detail: logSummary
+                    )
+                default:
+                    throw ExternalOpenXRLauncherError.launchedApplicationExited(application.title)
                 }
-                throw ExternalOpenXRLauncherError.launchedApplicationExited(application.title)
             }
 
             if Date() >= launchDeadline {
@@ -388,17 +341,13 @@ final class ExternalOpenXRLauncher {
     }
 
     private var launchedApplicationHasExited: Bool {
-        if let process {
-            return !process.isRunning
-        }
-        if let runningApplication {
-            return runningApplication.isTerminated
-        }
-        return false
+        launched != nil && exit != nil
     }
 
-    private func mergedEnvironment(overrides: [String: String]) -> [String: String] {
-        ProcessInfo.processInfo.environment.merging(overrides) { _, override in override }
+    /// The last lines of the launch log, for an actionable start-up failure.
+    private var logSummary: String {
+        guard let url = launched?.logURL else { return "" }
+        return LaunchOutputTail.summary(ofLogAt: url)
     }
 
     private func clearLaunchState() {
@@ -407,11 +356,9 @@ final class ExternalOpenXRLauncher {
         targetClientID = nil
         targetSessionWasActive = false
         currentApplication = nil
-        process = nil
-        processOutput?.fileHandleForReading.readabilityHandler = nil
-        processOutput = nil
-        outputTail = LaunchOutputTail()
-        runningApplication = nil
+        launchTask = nil
+        launched = nil
+        exit = nil
         launchDeadline = .distantPast
         stopGracePeriod = 2
         stopRequested = false
@@ -434,5 +381,19 @@ final class LaunchOutputTail: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         let lines = String(decoding: bytes, as: UTF8.self).split(whereSeparator: \.isNewline)
         return lines.suffix(4).joined(separator: "\n")
+    }
+
+    /// The summary of a log file's last 16 KB, skipping Threshold's `#` header lines.
+    static func summary(ofLogAt url: URL) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        try? handle.seek(toOffset: size > 16_384 ? size - 16_384 : 0)
+        let tail = LaunchOutputTail()
+        let text = String(decoding: handle.readDataToEndOfFile(), as: UTF8.self)
+        let body = text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.hasPrefix("# ") }.joined(separator: "\n")
+        tail.append(Data(body.utf8))
+        return tail.summary
     }
 }

@@ -90,7 +90,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwiftXRShellTests",
-            dependencies: ["SwiftXRShell"],
+            dependencies: ["SwiftXRShell", "ThresholdCore"],
             path: "ThresholdHome/Tests/SwiftXRShellTests",
             linkerSettings: openXRLoaderLinkerSettings
         ),

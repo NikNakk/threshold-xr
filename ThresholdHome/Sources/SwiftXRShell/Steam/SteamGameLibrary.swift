@@ -1,6 +1,7 @@
 import AppKit
 import Darwin
 import Foundation
+import ThresholdCore
 
 /// Where the macos-wine-xr Steam tools live. Overridable in settings.json
 /// (`steamGamesTool`, `windowsGameRunner`).
@@ -35,9 +36,15 @@ struct SteamGamesConfiguration: Sendable {
             systemImage: "gamecontroller.fill",
             kind: .external(
                 ExternalOpenXRApplication(
-                    executableURL: runnerURL,
-                    arguments: [String(game.appID)],
-                    openXRApplicationName: game.name,
+                    target: LaunchTarget(
+                        id: "steam.\(game.appID)",
+                        title: game.name,
+                        subtitle: "Steam (Windows)",
+                        url: runnerURL,
+                        kind: .executable,
+                        arguments: [String(game.appID)],
+                        openXRApplicationName: game.name
+                    ),
                     openXRClientTimeout: Self.openXRClientTimeout,
                     stopGracePeriod: Self.stopGracePeriod,
                     showsHomeWhileStarting: true

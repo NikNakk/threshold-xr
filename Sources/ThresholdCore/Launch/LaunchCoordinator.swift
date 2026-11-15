@@ -150,8 +150,9 @@ public final class LaunchCoordinator {
             $0.phase = .stopping
         }
         process.requestStop()
-        Task { [weak self, stopGracePeriod] in
-            try? await Task.sleep(for: stopGracePeriod)
+        let grace = targets[id]?.stopGracePeriod.map { Duration.seconds($0) }.map { max($0, stopGracePeriod) } ?? stopGracePeriod
+        Task { [weak self] in
+            try? await Task.sleep(for: grace)
             guard let self, self.record(id)?.phase.isActive == true else { return }
             self.processes[id]?.forceStop()
         }

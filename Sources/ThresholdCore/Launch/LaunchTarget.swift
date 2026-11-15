@@ -1,8 +1,8 @@
 import Foundation
 
-/// Something Threshold XR can start directly, without Threshold Home.
-public struct LaunchTarget: Sendable, Equatable, Identifiable {
-    public enum Kind: String, Sendable, Equatable {
+/// An application Threshold XR or Threshold Home can start (see `ApplicationCatalog`).
+public struct LaunchTarget: Sendable, Hashable, Identifiable {
+    public enum Kind: String, Sendable, Hashable {
         /// A macOS application bundle, opened through Launch Services.
         case appBundle
         /// An executable or script, run as a child process with its output logged.
@@ -29,6 +29,11 @@ public struct LaunchTarget: Sendable, Equatable, Identifiable {
     public var unavailableReasons: [String] = []
     /// The executable macOS names in crash reports, when it is not the target's own.
     public var hostProcessName: String?
+    /// How long its OpenXR client may take to appear, when longer than a launcher's default.
+    public var clientTimeout: TimeInterval?
+    /// How long Stop waits after the first request before forcing it, when
+    /// longer than a launcher's default.
+    public var stopGracePeriod: TimeInterval?
 
     public init(
         id: String,
@@ -81,6 +86,11 @@ public struct LaunchTarget: Sendable, Equatable, Identifiable {
         frameworkProfileID = profile.id
         unavailableReasons = profile.missingComponents.map { "missing \($0)" }
         hostProcessName = profile.hostProcessName
+        // Guest hosts load a whole game before connecting to Monado.
+        clientTimeout = 120
+        // threshold-run stops the app itself (SIGTERM, then SIGKILL after 5 s)
+        // and restores its files; forcing threshold-run sooner would orphan the app.
+        stopGracePeriod = 10
     }
 
     /// The executable name macOS uses in crash reports.

@@ -151,6 +151,15 @@ A catalog entry looks like this:
 
 See [`apps.example.json`](apps.example.json) for a larger example.
 
+Home's application list is ThresholdCore's `ApplicationCatalog`, the same list Threshold XR
+shows: the entries in `apps.json`, followed by the applications threshold-runtime provides
+(`threshold-run --list --json`, found through `THRESHOLD_RUNTIME` or `~/Code/threshold-runtime`).
+Home starts both kinds through ThresholdCore's `DirectLauncher`, so each launch writes a log to
+`~/Library/Logs/Threshold XR/Launches`, and a threshold-runtime app that crashes in its guest is
+reported as a crash. threshold-runtime apps get a 120 s wait for their OpenXR client, keep Home on
+screen while they load, and are given 10 s to stop, enough for threshold-run to stop the app and
+restore its files. If one source cannot be read, the other's applications are still listed.
+
 ### Steam launch diagnostics
 
 Windows Steam entries run through the configured Wine runner. The runner
