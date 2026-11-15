@@ -120,7 +120,16 @@ private struct ApplicationRow: View {
                     if let subtitle = target.subtitle {
                         Text(subtitle).font(.callout).foregroundStyle(.secondary)
                     }
-                    PathText(path: target.url.path, exists: FileManager.default.fileExists(atPath: target.url.path))
+                    if let folder = target.steamInstallFolder {
+                        // The target's URL is steam://..., not a file: show where Steam installed it.
+                        PathText(path: folder.path, exists: FileManager.default.fileExists(atPath: folder.path))
+                        if let appID = target.steamAppID {
+                            Text("Steam app \(String(appID)) · \(target.url.absoluteString)")
+                                .font(.caption.monospaced()).foregroundStyle(.secondary)
+                        }
+                    } else {
+                        PathText(path: target.url.path, exists: FileManager.default.fileExists(atPath: target.url.path))
+                    }
                     if !target.arguments.isEmpty {
                         Text("Arguments: \(target.arguments.joined(separator: " "))")
                             .font(.caption.monospaced()).foregroundStyle(.secondary)
