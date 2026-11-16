@@ -45,10 +45,13 @@ let package = Package(
         // libmonado is loaded dynamically and only when it is safe to use.
         .target(
             name: "ThresholdCore",
+            dependencies: ["CThresholdArchive"],
+            resources: [.copy("Resources/SteamBridge")],
             linkerSettings: [
                 .linkedFramework("IOKit")
             ]
         ),
+        .target(name: "CThresholdArchive", linkerSettings: [.linkedLibrary("archive")]),
         .executableTarget(
             name: "ThresholdXR",
             dependencies: ["ThresholdCore"]

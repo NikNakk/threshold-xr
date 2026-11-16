@@ -1,9 +1,11 @@
 import SwiftUI
 import ThresholdCore
+import UniformTypeIdentifiers
 
 struct ComponentsView: View {
     @Environment(AppModel.self) private var model
     @State private var selection: ComponentID? = .monado
+    @State private var showSteamBridgeBuild = false
 
     var body: some View {
         HSplitView {
@@ -39,6 +41,41 @@ struct ComponentsView: View {
         }
         .toolbar {
             ToolbarItem {
+                Button("Build Steam Bridge…", systemImage: "hammer") { showSteamBridgeBuild = true }
+            }
+            ToolbarItem {
+                Button {
+                    let panel = NSOpenPanel()
+                    panel.allowedContentTypes = [.json]
+                    panel.message = "Choose a pinned Threshold XR release stack from a trusted source."
+                    if panel.runModal() == .OK, let url = panel.url {
+                        Task { await model.installReleaseStack(url) }
+                    }
+                } label: {
+                    if model.isInstallingRelease { ProgressView("Installing stack…") }
+                    else { Label("Install Stack…", systemImage: "arrow.down.circle") }
+                }
+                .disabled(model.isInstallingRelease)
+            }
+            ToolbarItem {
+                Menu("Launch Stack", systemImage: "square.stack.3d.up") {
+                    ForEach(model.installedReleaseStacks) { installed in
+                        Button(installed.id) { Task { await model.selectLaunchStack(installed) } }
+                    }
+                    Divider()
+                    Button("Use Profile Dependencies") { Task { await model.clearLaunchStack() } }
+                }
+                .disabled(model.isInstallingRelease)
+                .help("Select client dependencies for Threshold Runtime; this does not switch the Monado service.")
+            }
+            ToolbarItem {
+                Button("Installed Releases", systemImage: "folder") {
+                    NSWorkspace.shared.open(ReleaseInstaller.defaultRoot())
+                }
+                .disabled(model.installedReleaseStacks.isEmpty)
+                .help(model.installedReleaseStacks.map(\.id).joined(separator: ", "))
+            }
+            ToolbarItem {
                 Button {
                     Task { await model.discoverComponents() }
                 } label: {
@@ -52,6 +89,8 @@ struct ComponentsView: View {
                 .disabled(model.isDiscoveringComponents)
             }
         }
+        .sheet(isPresented: $showSteamBridgeBuild) { SteamBridgeBuildView().environment(model) }
+        .task { await model.refreshReleaseStacks() }
     }
 }
 

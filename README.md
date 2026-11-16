@@ -6,7 +6,7 @@ It is an ordinary desktop app. It opens and works with no headset connected. It 
 
 | Name | What it is |
 | --- | --- |
-| **Threshold XR** | This desktop app: installer (planned), configuration manager and launcher. |
+| **Threshold XR** | This desktop app: release installer, configuration manager and launcher. |
 | **Threshold Home** | The optional immersive environment in the headset. Its source is in [`ThresholdHome/`](ThresholdHome/README.md) (imported from SwiftXR Shell with its history); it is still built and installed as `SwiftXR Shell.app`. |
 | **Threshold Agent** | An optional background component. It is not needed yet; see [the design document](docs/design.md#threshold-agent). |
 | **SwiftXR** | The existing Swift XR framework. This project does not depend on it or change it. |
@@ -161,3 +161,13 @@ The check also found a brief moment while launchd tears the job down when `launc
 - Alyx's `play` profile uses the installed Monado service (since alyx-native `3b9cace`), so Alyx launches can reach *Connected*. xrizer reports the host executable's name (`alyx_host`) to Monado, so *In headset* needs the catalog entry's `openXRApplicationName` to be `alyx_host`. Other Alyx profiles (`play-recorded`, comparisons, replays) still start their own temporary Monado and will never show *Connected*.
 - The headset check is passive: USB presence (Sony `054C:0CDE`, from Monado's psvr2 driver) plus Monado's head device when a query is safe. The PS VR2 display connection is not checked separately.
 - The OpenXR loader does not record its own version, so the OpenXR-SDK checkout's version is shown instead and labelled as such.
+
+## Dependency release installation
+
+The [Steam bridge local build prototype](docs/steam-bridge-local-build.md) uses a
+paired Wine development bundle to compile the bridge without building Wine locally.
+
+Components → **Install Stack…** imports a pinned release-stack JSON and installs verified,
+versioned files from our GitHub forks. Activation remains a separate step. See the
+[implementation and rollout plan](docs/dependency-releases.md) for the release format,
+workflow branches, maintainer commands, validation and remaining stages.

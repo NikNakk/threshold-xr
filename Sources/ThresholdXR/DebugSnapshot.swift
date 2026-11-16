@@ -28,6 +28,26 @@ enum DebugSnapshot {
             try? await Task.sleep(for: .milliseconds(100))
         }
         let suffix = appearanceName == .darkAqua ? "-dark" : ""
+        if CommandLine.arguments.contains("--snapshot-steam-bridge") {
+            let host = NSHostingView(rootView: SteamBridgeBuildView().environment(model))
+            host.frame = NSRect(x: 0, y: 0, width: 780, height: 760)
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: appearanceName)
+            window.contentView = host
+            window.orderBack(nil)
+            window.alphaValue = 0.01
+            try? await Task.sleep(for: .milliseconds(700))
+            host.layoutSubtreeIfNeeded()
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                host.cacheDisplay(in: host.bounds, to: rep)
+                if let data = rep.representation(using: .png, properties: [:]) {
+                    try? data.write(to: directory.appending(path: "steam-bridge\(suffix).png"))
+                }
+            }
+            window.orderOut(nil)
+            NSApp.terminate(nil)
+            return
+        }
         for item in SidebarItem.allCases {
             let root = SnapshotRoot(item: item).environment(model)
             let host = NSHostingView(rootView: root)

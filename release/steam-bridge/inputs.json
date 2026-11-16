@@ -1,0 +1,8 @@
+{
+  "proton_revision": "bc896217ffcd67f892f952b010f898fe7bd0f0a1",
+  "tree_sha256": "0f0974a9e4b99cc203213c3c6c7e6d0068c54b36b309b60b7efa60b80484f77a",
+  "patch_sha256": "2006d8a2f73d390b3ca5c1a35ccc655fbb333a1396199d202396016df3c19d9f",
+  "launcher_sha256": "cf655330957d9038acf48a4a2457e4e5fe2842588bc581b3a284696d83940d37",
+  "patch_origin": "NikNakk/macos-wine-xr@b47314f81f3d9adf137cd36501090bdf966561be",
+  "upstream_license": "https://github.com/ValveSoftware/Proton/blob/bc896217ffcd67f892f952b010f898fe7bd0f0a1/lsteamclient/LICENSE"
+}

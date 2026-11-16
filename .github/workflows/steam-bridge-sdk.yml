@@ -1,0 +1,37 @@
+name: Prototype Wine bridge development bundle
+on:
+  push:
+    branches: [codex/steam-bridge-sdk]
+  workflow_dispatch:
+    inputs:
+      wine_revision:
+        description: Wine commit containing both Steam redirect changes
+        required: true
+        default: 3eacaecc354e00c6e1d5bd23dc3e7a5ee5eb0ede
+      version:
+        description: Version for the paired runtime and development bundle
+        required: true
+        default: prototype-1
+permissions:
+  contents: read
+jobs:
+  wine-sdk:
+    runs-on: macos-15-intel
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test bundle validation and staging
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s release/steam-bridge/tests -v
+      - name: Build matching Wine runtime and development bundle
+        env:
+          WINE_REVISION: ${{ inputs.wine_revision || '3eacaecc354e00c6e1d5bd23dc3e7a5ee5eb0ede' }}
+          SDK_VERSION: ${{ inputs.version || 'prototype-1' }}
+          SDK_WORK: ${{ runner.temp }}/wine-sdk
+        run: bash release/steam-bridge/build-wine-sdk.sh
+      - name: Upload Wine-only prototype
+        uses: actions/upload-artifact@v7
+        with:
+          name: wine-bridge-sdk-prototype
+          path: ${{ runner.temp }}/wine-sdk/dist/*
+          if-no-files-found: error
+          retention-days: 7

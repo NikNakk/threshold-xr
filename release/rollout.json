@@ -1,0 +1,150 @@
+{
+  "monado": {
+    "repository": "NikNakk/monado",
+    "base": "macos-upstream-clean",
+    "base_commit": "42c99bb1d2854f2ba297709291c550b8f384711b",
+    "branch": "codex/threshold-releases",
+    "commit": "55a12db8193cb44d7bc25876b78b12e706fe8a99",
+    "url": "https://github.com/NikNakk/monado/tree/codex/threshold-releases",
+    "previous_ci": {
+      "id": 43933103900,
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/NikNakk/monado/actions/runs/43933103900",
+      "event": "push"
+    },
+    "ci": {
+      "id": 43942030671,
+      "status": "queued",
+      "conclusion": null,
+      "html_url": "https://github.com/NikNakk/monado/actions/runs/43942030671",
+      "event": "push"
+    }
+  },
+  "kosmickrisp": {
+    "repository": "NikNakk/mesa",
+    "base": "integration/native-alyx-20261115",
+    "base_commit": "0def217279c1941e6322e3d0893d628fe33bb723",
+    "branch": "codex/threshold-releases",
+    "commit": "6b9c88ae908b2a81809d6aacd172820e1e7531df",
+    "url": "https://github.com/NikNakk/mesa/tree/codex/threshold-releases",
+    "dispatch": {
+      "version": "preview-20261116-gf89c24a",
+      "requested": true
+    },
+    "previous_ci": {
+      "id": 43933852808,
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/NikNakk/mesa/actions/runs/43933852808",
+      "event": "workflow_dispatch"
+    },
+    "ci": {
+      "id": 43942012880,
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/NikNakk/mesa/actions/runs/43942012880",
+      "event": "push"
+    }
+  },
+  "xrizer": {
+    "repository": "NikNakk/xrizer",
+    "base": "macos-native",
+    "base_commit": "4e58bd3422408e11ebb791de0161650f99939545",
+    "branch": "codex/threshold-releases",
+    "commit": "c73ab0ac9358119cab5f1071e5d7546fc2ccdff0",
+    "url": "https://github.com/NikNakk/xrizer/tree/codex/threshold-releases",
+    "previous_ci": {
+      "id": 43933124029,
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/NikNakk/xrizer/actions/runs/43933124029",
+      "event": "push"
+    },
+    "ci": {
+      "id": 43942019767,
+      "status": "queued",
+      "conclusion": null,
+      "html_url": "https://github.com/NikNakk/xrizer/actions/runs/43942019767",
+      "event": "push"
+    }
+  },
+  "klepton": {
+    "repository": "NikNakk/Klepton",
+    "base": "macos-native",
+    "base_commit": "6765b097c97240d563a1c2ab83c2be8bda190151",
+    "branch": "codex/threshold-releases",
+    "commit": "661c19d49da8ec0e13b96a8ee455b462f28f4d7a",
+    "url": "https://github.com/NikNakk/Klepton/tree/codex/threshold-releases",
+    "previous_ci": {
+      "id": 43933143724,
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/NikNakk/Klepton/actions/runs/43933143724",
+      "event": "push"
+    },
+    "ci": {
+      "id": 43942038476,
+      "status": "queued",
+      "conclusion": null,
+      "html_url": "https://github.com/NikNakk/Klepton/actions/runs/43942038476",
+      "event": "push"
+    }
+  },
+  "dxmt": {
+    "repository": "NikNakk/dxmt",
+    "base": "macos-xr-native-sharing",
+    "base_commit": "e4e85d294126d69b1f2a29090b5a029f8f3b8fdb",
+    "branch": "codex/threshold-releases",
+    "commit": "805cdfc4cabd7fabc3b05bf58aa1f2a4762c51a9",
+    "url": "https://github.com/NikNakk/dxmt/tree/codex/threshold-releases",
+    "ci": {
+      "id": 43933150917,
+      "status": "in_progress",
+      "conclusion": null,
+      "html_url": "https://github.com/NikNakk/dxmt/actions/runs/43933150917",
+      "event": "push"
+    }
+  },
+  "wine": {
+    "repository": "NikNakk/wine-crossover",
+    "base": "crossover-26.3.0",
+    "base_commit": "782583c1bae4e2f64748fec0d3abcf2719e8828b",
+    "branch": "codex/threshold-releases",
+    "commit": "ee6348f3724533435751e0c6a02673f87ead5893",
+    "url": "https://github.com/NikNakk/wine-crossover/tree/codex/threshold-releases",
+    "ci": {
+      "id": 43933162953,
+      "status": "in_progress",
+      "conclusion": null,
+      "html_url": "https://github.com/NikNakk/wine-crossover/actions/runs/43933162953",
+      "event": "push"
+    }
+  },
+  "macos-wine-xr": {
+    "repository": "NikNakk/macos-wine-xr",
+    "base": "claude/steamvr-openxr-driver",
+    "base_commit": "cb5508593f7352218da40ccd64e432dd1d8018fa",
+    "branch": "codex/threshold-releases",
+    "commit": "057f022d9db61125587f1b57d20034e4e70ed182",
+    "url": "https://github.com/NikNakk/macos-wine-xr/tree/codex/threshold-releases",
+    "dispatch": {
+      "version": "preview-20261116-g871fee0",
+      "requested": true
+    },
+    "previous_ci": {
+      "id": 43933858687,
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/NikNakk/macos-wine-xr/actions/runs/43933858687",
+      "event": "workflow_dispatch"
+    },
+    "ci": {
+      "id": 43942046279,
+      "status": "queued",
+      "conclusion": null,
+      "html_url": "https://github.com/NikNakk/macos-wine-xr/actions/runs/43942046279",
+      "event": "push"
+    }
+  }
+}

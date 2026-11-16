@@ -1,0 +1,99 @@
+{
+  "monado": {
+    "repository": "NikNakk/monado",
+    "base": "macos-upstream-clean",
+    "artifacts": [
+      {
+        "platform": "macos-arm64",
+        "os": "macos-26",
+        "role": "service"
+      },
+      {
+        "platform": "macos-x86_64",
+        "os": "macos-15-intel",
+        "role": "wine-client"
+      }
+    ]
+  },
+  "kosmickrisp": {
+    "repository": "NikNakk/mesa",
+    "base": "integration/native-alyx-20261115",
+    "artifacts": [
+      {
+        "platform": "macos-arm64",
+        "os": "macos-26",
+        "role": "vulkan-driver"
+      }
+    ]
+  },
+  "xrizer": {
+    "repository": "NikNakk/xrizer",
+    "base": "macos-native",
+    "artifacts": [
+      {
+        "platform": "macos-arm64",
+        "os": "macos-26",
+        "role": "openvr-runtime"
+      },
+      {
+        "platform": "windows-x86_64",
+        "os": "ubuntu-24.04",
+        "role": "openvr-runtime"
+      }
+    ]
+  },
+  "klepton": {
+    "repository": "NikNakk/Klepton",
+    "base": "macos-native",
+    "artifacts": [
+      {
+        "platform": "macos-arm64",
+        "os": "macos-26",
+        "role": "guest-loader"
+      }
+    ]
+  },
+  "dxmt": {
+    "repository": "NikNakk/dxmt",
+    "base": "macos-xr-native-sharing",
+    "artifacts": [
+      {
+        "platform": "macos-x86_64",
+        "os": "macos-15-intel",
+        "role": "wine-unix"
+      },
+      {
+        "platform": "windows-x86_64",
+        "os": "macos-15-intel",
+        "role": "wine-dlls"
+      }
+    ]
+  },
+  "wine": {
+    "repository": "NikNakk/wine-crossover",
+    "base": "crossover-26.3.0",
+    "artifacts": [
+      {
+        "platform": "macos-x86_64",
+        "os": "macos-15-intel",
+        "role": "compatibility-layer"
+      }
+    ]
+  },
+  "macos-wine-xr": {
+    "repository": "NikNakk/macos-wine-xr",
+    "base": "claude/steamvr-openxr-driver",
+    "artifacts": [
+      {
+        "platform": "macos-arm64",
+        "os": "macos-26",
+        "role": "integration"
+      },
+      {
+        "platform": "windows-x86_64",
+        "os": "macos-15-intel",
+        "role": "windows-openxr-loader"
+      }
+    ]
+  }
+}
