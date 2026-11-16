@@ -12,6 +12,7 @@ import platform
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
@@ -517,6 +518,9 @@ def main():
             p.add_argument('--bridge', type=Path, required=True)
             p.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    def cancelled(signum, frame):
+        raise KeyboardInterrupt()
+    signal.signal(signal.SIGTERM, cancelled)
     try:
         if args.command == 'export-sdk':
             export_sdk(args)
@@ -539,6 +543,8 @@ def main():
                 print('Runtime matches SDK')
     except (ValueError, OSError, RuntimeError, subprocess.CalledProcessError) as error:
         parser.exit(1, str(error) + '\n')
+    except KeyboardInterrupt:
+        parser.exit(130, 'Build cancelled. Work files and logs were retained.\n')
 
 
 if __name__ == '__main__':

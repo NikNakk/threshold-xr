@@ -2,6 +2,8 @@ import argparse
 import importlib.util
 import io
 import json
+import subprocess
+import sys
 from pathlib import Path
 import tarfile
 import tempfile
@@ -13,6 +15,40 @@ spec.loader.exec_module(bridge)
 
 
 class BundleTests(unittest.TestCase):
+    def test_app_resource_matches_command_line_builder(self):
+        source = Path(__file__).parents[1]
+        destination = source.parents[1] / 'Sources/ThresholdCore/Resources/SteamBridge'
+        if not destination.exists():
+            self.skipTest('Standalone SDK producer checkout has no app resources')
+        for name in ['bridge.py', 'inputs.json'] + [p.relative_to(source).as_posix() for p in (source / 'inputs').rglob('*') if p.is_file()]:
+            self.assertEqual((source / name).read_bytes(), (destination / name).read_bytes(), name)
+
+    def test_sigterm_exits_cleanly_with_cancellation_message(self):
+        source = Path(__file__).parents[1]
+        program = '''
+import sys, time
+from unittest.mock import patch
+import bridge
+sys.argv = ['bridge', 'doctor', '--sdk', '/unused']
+def wait(*args):
+    print('ready', flush=True)
+    time.sleep(60)
+with patch.object(bridge, 'load_sdk', return_value={}), patch.object(bridge, 'doctor', side_effect=wait):
+    bridge.main()
+'''
+        process = subprocess.Popen([sys.executable, '-u', '-c', program], cwd=source,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            self.assertEqual(process.stdout.readline().strip(), 'ready')
+            process.terminate()
+            _, error = process.communicate(timeout=5)
+            self.assertEqual(process.returncode, 130)
+            self.assertIn('Build cancelled', error)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+
     def sdk(self, root):
         root.mkdir()
         (root / 'header.h').write_text('fixture')
