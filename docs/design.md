@@ -149,6 +149,76 @@ The only root-owned file is `/usr/local/share/openxr/1/active_runtime.json`, and
 
 Source builds run the repository's own build entry points, such as Monado's CMake presets and `rebuild-both`, or DXMT's meson. The installer doesn't reimplement them. They run in a temporary worktree pinned to the stack's revision so the developer's checkout is never touched. Each build records a manifest like Monado's `local-install-*.json`: commit, architecture, SHA-256 of each binary, and the backup path.
 
+### 5.8 Binary releases and installation (decided 16 November 2026)
+
+Threshold XR itself installs from Homebrew (a cask in the public `niknakk/threshold` tap).
+Its dependencies do **not** use Homebrew: Threshold XR downloads them from GitHub releases
+into versioned folders (§5.3). Homebrew keeps one version per formula and upgrades formulae
+independently, which defeats pinned stacks and rollback, and it cannot place Windows DLLs or
+DXMT into a Wine runtime. The tap's `monado` formula stays for command-line users; Threshold
+XR adopts such an install as an `external` release (§5.3), as it does `~/.local/monado-psvr2`.
+
+**Each dependency repository** has a `threshold-release.yml` workflow. Pushing a tag
+`threshold-<version>` (or running the workflow on a commit) builds that commit on a macOS
+runner and publishes a GitHub release on that tag with:
+
+- one archive per artifact, `<component>-<version>-<platform>.tar.xz`, where `<platform>`
+  is `macos-arm64`, `macos-x86_64` (Rosetta, the Wine side) or `windows-x86_64`. Archives
+  contain a single top-level folder, relative symlinks only, and no absolute paths:
+  library references use `@rpath`/`@loader_path`, and manifests (OpenXR runtime JSON,
+  Vulkan ICD) use relative `library_path`s;
+- `threshold-release.json`, the release's manifest:
+
+```json
+{
+  "schema": "threshold-xr/release-1",
+  "component": "monado",
+  "version": "25.1.0-2500-ga185d42d5",
+  "repository": "NikNakk/monado",
+  "commit": "a185d42d56ffdb004d3e2a1bb6d149d3c487e58b",
+  "built": "2026-11-16T10:00:00Z",
+  "workflow_run": "https://github.com/NikNakk/monado/actions/runs/…",
+  "provides": {"build_tag": "v25.1.0-2500-ga185d42d5"},
+  "artifacts": [
+    {"name": "monado-25.1.0-2500-ga185d42d5-macos-arm64.tar.xz", "platform": "macos-arm64",
+     "sha256": "…", "size": 12345678, "role": "service"},
+    {"name": "monado-25.1.0-2500-ga185d42d5-macos-x86_64.tar.xz", "platform": "macos-x86_64",
+     "sha256": "…", "size": 2345678, "role": "wine-client"}
+  ]
+}
+```
+
+Versions are the component's own identity where it has one (Monado's `git describe`, which
+is also the IPC build tag; Wine's CrossOver version plus our revision), otherwise
+`<upstream base>-<yyyymmdd>-g<commit7>`.
+
+**Signing.** For now releases are signed ad hoc (arm64 Mach-O files always carry at least a
+linker signature) and not notarized. Threshold XR downloads with `URLSession`, which adds no
+quarantine attribute, so the files load without Gatekeeper prompts. A Developer ID signature
+and notarization can be added to the same workflows later; the Homebrew cask for Threshold
+XR is the one place an ad hoc signature shows (macOS asks the user to approve the app once
+in System Settings).
+
+**Integrity.** A stack (§5.2) names each component's release tag and the SHA-256 of its
+`threshold-release.json`; that file gives each archive's SHA-256. Threshold XR verifies both
+before unpacking, so a stack published from the threshold-xr repository pins every byte it
+installs. Workflows also record build provenance with GitHub artifact attestations.
+
+**Components and their artifacts:**
+
+| Component | Repository | Artifacts |
+| --- | --- | --- |
+| `monado` | NikNakk/monado | service prefix (`macos-arm64`), Wine client (`macos-x86_64`); same build tag |
+| `kosmickrisp` | NikNakk/mesa | Vulkan ICD and library (`macos-arm64`) |
+| `xrizer` | NikNakk/xrizer | OpenVR runtime for native apps (`macos-arm64`), and for Wine (`windows-x86_64`) |
+| `klepton` | NikNakk/Klepton | guest loader (`macos-arm64`) |
+| `dxmt` | NikNakk/dxmt | DLLs (`windows-x86_64`) and `winemetal.so` (`macos-x86_64`), installed into a Wine runtime |
+| `wine` | NikNakk/wine-crossover | CrossOver Wine runtime with WoW64 (`macos-x86_64`) |
+| `macos-wine-xr` | NikNakk/macos-wine-xr | Steam Play tool, Wine XR bridge and runners |
+
+threshold-runtime and alyx-native stay private and are not released; their applications keep
+coming from the local workspace (§6).
+
 ## 6. Applications and the guest-app framework boundary
 
 The Alyx and Monado pacing work has moved the guest-app framework into its own repository, `~/Code/threshold-runtime` (private, NikNakk/threshold-runtime, MIT): the Linux guest layer (`linux/`) and Android guest layer (`android/`, formerly `alyx-native/quest-host`) on Klepton, per-app fixes, launch and record tools. Launchers find it through `THRESHOLD_RUNTIME`; builds still go to the `THRESHOLD_WORKSPACE` (default `~/Code/alyx-native`). Threshold XR's Quest host detection follows both. Profiles will carry `monado.build_tag`, read from the built binaries (the compiled-in version can lag the source), alongside the commit, branch, build directory and `service: isolated|installed`. Threshold XR should treat that framework as an external provider of applications:
