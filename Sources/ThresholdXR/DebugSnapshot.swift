@@ -78,10 +78,15 @@ enum DebugSnapshot {
             NSApp.terminate(nil)
             return
         }
+        let widthIndex = CommandLine.arguments.firstIndex(of: "--snapshot-width")
+        let requestedWidth = widthIndex.flatMap { index in
+            index + 1 < CommandLine.arguments.count ? Double(CommandLine.arguments[index + 1]) : nil
+        }
+        let snapshotWidth = max(860, requestedWidth ?? 1120)
         for item in SidebarItem.allCases {
             let root = SnapshotRoot(item: item).environment(model)
             let host = NSHostingView(rootView: root)
-            host.frame = NSRect(x: 0, y: 0, width: 1120, height: 780)
+            host.frame = NSRect(x: 0, y: 0, width: snapshotWidth, height: 780)
             let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
             window.appearance = NSAppearance(named: appearanceName)
             window.contentView = host

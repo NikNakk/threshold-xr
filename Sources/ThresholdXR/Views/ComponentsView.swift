@@ -9,94 +9,109 @@ struct ComponentsView: View {
     @State private var showSteamBridgeBuild = false
 
     var body: some View {
-        HSplitView {
-            List(model.components, selection: $selection) { component in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(component.id.displayName).font(.headline)
-                        Text(component.id.role.rawValue).font(.caption).foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+            actionBar
+            HSplitView {
+                List(model.components, selection: $selection) { component in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(component.id.displayName).font(.headline)
+                            Text(component.id.role.rawValue).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        StatusPill(text: component.state.rawValue, tone: component.state.tone)
                     }
-                    Spacer()
-                    StatusPill(text: component.state.rawValue, tone: component.state.tone)
+                    .padding(.vertical, 3)
+                    .tag(component.id)
                 }
-                .padding(.vertical, 3)
-                .tag(component.id)
-            }
-            .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
-            .overlay {
-                if model.components.isEmpty && model.isDiscoveringComponents {
-                    ProgressView("Detecting components…")
+                .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
+                .overlay {
+                    if model.components.isEmpty && model.isDiscoveringComponents {
+                        ProgressView("Detecting components…")
+                    }
                 }
-            }
 
-            Group {
-                if let id = selection, let component = model.components.first(where: { $0.id == id }) {
-                    ComponentDetail(component: component)
-                        .id(component.id)
-                } else {
-                    Text("Select a component").foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }
-            .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .toolbar {
-            ToolbarItem {
-                Button(model.buildCatalogue.updateCount > 0 ? "GitHub Builds (\(model.buildCatalogue.updateCount) updates)…" : "GitHub Builds…",
-                       systemImage: "arrow.down.circle") { showGitHubBuilds = true }
-            }
-            ToolbarItem {
-                Button("Set Up Wine…", systemImage: "shippingbox") { showSteamBridgeBuild = true }
-            }
-            ToolbarItem {
-                Button {
-                    let panel = NSOpenPanel()
-                    panel.allowedContentTypes = [.json]
-                    panel.message = "Choose a pinned Threshold XR release stack from a trusted source."
-                    if panel.runModal() == .OK, let url = panel.url {
-                        Task { await model.installReleaseStack(url) }
-                    }
-                } label: {
-                    if model.isInstallingRelease { ProgressView("Installing stack…") }
-                    else { Label("Install Stack…", systemImage: "arrow.down.circle") }
-                }
-                .disabled(model.isInstallingRelease || model.buildCatalogue.installing != nil)
-            }
-            ToolbarItem {
-                Menu("Launch Stack", systemImage: "square.stack.3d.up") {
-                    ForEach(model.installedReleaseStacks) { installed in
-                        Button(installed.id) { Task { await model.selectLaunchStack(installed) } }
-                    }
-                    Divider()
-                    Button("Use Profile Dependencies") { Task { await model.clearLaunchStack() } }
-                }
-                .disabled(model.isInstallingRelease || model.buildCatalogue.installing != nil)
-                .help("Select client dependencies for Threshold Runtime; this does not switch the Monado service.")
-            }
-            ToolbarItem {
-                Button("Installed Releases", systemImage: "folder") {
-                    NSWorkspace.shared.open(ReleaseInstaller.defaultRoot())
-                }
-                .disabled(model.buildCatalogue.installed.isEmpty)
-                .help(model.installedReleaseStacks.map(\.id).joined(separator: ", "))
-            }
-            ToolbarItem {
-                Button {
-                    Task { await model.discoverComponents() }
-                } label: {
-                    if model.isDiscoveringComponents {
-                        ProgressView().controlSize(.small)
+                Group {
+                    if let id = selection, let component = model.components.first(where: { $0.id == id }) {
+                        ComponentDetail(component: component)
+                            .id(component.id)
                     } else {
-                        Label("Detect Again", systemImage: "arrow.clockwise")
+                        Text("Select a component").foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                .help("Detect components again")
-                .disabled(model.isDiscoveringComponents)
+                .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .sheet(isPresented: $showGitHubBuilds) { GitHubBuildsView().environment(model) }
         .sheet(isPresented: $showSteamBridgeBuild) { WineSetupView().environment(model) }
         .task { await model.refreshReleaseStacks() }
+    }
+
+    private var actionBar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { primaryActions; secondaryActions }
+                .fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) { primaryActions }.fixedSize(horizontal: true, vertical: false)
+                HStack(spacing: 8) { secondaryActions }.fixedSize(horizontal: true, vertical: false)
+            }
+        }
+        .labelStyle(.titleAndIcon)
+        .buttonStyle(.bordered)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.bar)
+        .overlay(alignment: .bottom) { Divider() }
+    }
+
+    @ViewBuilder private var primaryActions: some View {
+        Button(model.buildCatalogue.updateCount > 0 ? "GitHub Builds (\(model.buildCatalogue.updateCount))…" : "GitHub Builds…",
+               systemImage: "arrow.down.circle") { showGitHubBuilds = true }
+            .help("Find new dependency builds on GitHub and install or update them.")
+        Button("Set Up Wine…", systemImage: "shippingbox") { showSteamBridgeBuild = true }
+            .help("Set up packaged Wine or build the optional native Steam bridge.")
+        Button {
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [.json]
+            panel.message = "Choose a pinned Threshold XR release stack from a trusted source."
+            if panel.runModal() == .OK, let url = panel.url {
+                Task { await model.installReleaseStack(url) }
+            }
+        } label: {
+            if model.isInstallingRelease {
+                HStack { ProgressView().controlSize(.small); Text("Installing Stack…") }
+            } else { Label("Install Stack…", systemImage: "doc.text") }
+        }
+        .disabled(model.isInstallingRelease || model.buildCatalogue.installing != nil)
+        .help("Install a pinned set of dependencies from a release-stack JSON file.")
+    }
+
+    @ViewBuilder private var secondaryActions: some View {
+        Menu("Launch Stack", systemImage: "square.stack.3d.up") {
+            ForEach(model.installedReleaseStacks) { installed in
+                Button(installed.id) { Task { await model.selectLaunchStack(installed) } }
+            }
+            Divider()
+            Button("Use Profile Dependencies") { Task { await model.clearLaunchStack() } }
+        }
+        .disabled(model.isInstallingRelease || model.buildCatalogue.installing != nil)
+        .fixedSize()
+        .help("Select client dependencies for Threshold Runtime; this does not switch the Monado service.")
+        Button("Installed Releases", systemImage: "folder") {
+            NSWorkspace.shared.open(ReleaseInstaller.defaultRoot())
+        }
+        .disabled(model.buildCatalogue.installed.isEmpty)
+        .help("Open the folder containing installed dependency releases.")
+        Button {
+            Task { await model.discoverComponents() }
+        } label: {
+            if model.isDiscoveringComponents {
+                HStack { ProgressView().controlSize(.small); Text("Detecting…") }
+            } else { Label("Detect Again", systemImage: "arrow.clockwise") }
+        }
+        .help("Scan local paths again to detect installed components.")
+        .disabled(model.isDiscoveringComponents)
     }
 }
 
