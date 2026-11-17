@@ -165,8 +165,8 @@ but packaging exposed a shared-library identity bug: an already relocated copy o
 `libnettle` was compared with its unchanged external original. The packager now
 retains original hashes for copied libraries. Real Mach-O regression tests reproduce
 the old failure, pass with the fix, and still reject different libraries with the
-same filename. The corrected clean run is
-[43984029292](https://github.com/NikNakk/threshold-xr/actions/runs/43984029292).
+same filename. The corrected clean run
+[43984029292](https://github.com/NikNakk/threshold-xr/actions/runs/43984029292) succeeded.
 `actionlint` validates the workflow expressions before this retry.
 
 The maintainer validator can watch a specific CI commit, download the resulting
@@ -188,6 +188,18 @@ and Steam/game validation of a newly compiled bridge.
 
 ## Validation
 
+On 17 November 2026, the clean CI runtime/SDK pair passed the complete maintainer
+validator: archive identities, guarded extraction, runtime matching, Win32/Win64 and
+native bridge compilation, separate runtime staging and `wine --version` (`wine-11.0`).
+The CI SDK targets macOS 14.0; execution was validated on the development Mac, not on
+every supported macOS version. Its archive is 61,544,462 bytes and the paired runtime
+archive is 224,953,840 bytes. The fresh SDK bridge compile took about 119 seconds with
+six jobs; all 346 recorded source dependencies came from the isolated inputs.
+
+CI SDK archive SHA-256:
+
+`1a038c3e593f6a32369a1fb084102d0f60ea25c136458a5880ba92abfddd71f5`
+
 The local prototype successfully compiled both PE architectures and the x86_64
 macOS bridge from an exported SDK. Archive extraction and the pinned upstream
 download were also exercised. The final six-job compile took about 56 seconds on
@@ -199,9 +211,10 @@ three recorded `ntdll` hashes still matched afterwards. No Steam/game launch was
 performed. These measurements describe this machine and toolchain, not a general
 performance guarantee.
 
-The 15-test Python suite covers tampering, runtime mismatches,
+The 18-test Python suite covers tampering, runtime mismatches,
 archive traversal/links, paths containing spaces, source dependency isolation,
-separate output directories and side-by-side staging:
+separate output directories, side-by-side staging and bounded retries for transient
+GitHub status errors:
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s release/steam-bridge/tests -v

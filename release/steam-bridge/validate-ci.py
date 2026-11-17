@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 
 HERE = Path(__file__).resolve().parent
 
@@ -40,6 +41,33 @@ int main(int argc, char **argv) {
     subprocess.run([str(work / 'extract-runtime'), str(archive), str(destination)], check=True)
 
 
+def wait_for_ci(read_state, sleep=time.sleep):
+    failures = 0
+    previous = None
+    while True:
+        try:
+            state = read_state()
+            failures = 0
+        except (subprocess.CalledProcessError, json.JSONDecodeError):
+            failures += 1
+            if failures >= 5:
+                raise
+            print('Transient GitHub status error; retrying.', flush=True)
+            sleep(10)
+            continue
+        if state['status'] == 'completed':
+            if state['conclusion'] != 'success':
+                raise ValueError('CI run completed with ' + str(state['conclusion']))
+            return
+        active = [step['name'] for job in state.get('jobs', []) for step in job.get('steps', [])
+                  if step.get('status') == 'in_progress']
+        phase = ', '.join(active) or state['status']
+        if phase != previous:
+            print('CI phase:', phase, flush=True)
+            previous = phase
+        sleep(30)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run', required=True, type=int)
@@ -63,7 +91,9 @@ def main():
             '--json', 'headSha,workflowName,headBranch'], text=True))
         if metadata['headSha'] != args.commit or metadata['workflowName'] != 'Prototype Wine bridge development bundle':
             raise ValueError('CI run does not match the expected source/workflow')
-        run('gh', 'run', 'watch', args.run, '--repo', repository, '--exit-status', '--interval', 30)
+        wait_for_ci(lambda: json.loads(subprocess.check_output([
+            'gh', 'run', 'view', str(args.run), '--repo', repository,
+            '--json', 'status,conclusion,jobs'], text=True)))
         artifacts = root / 'artifacts'
         run('gh', 'run', 'download', args.run, '--repo', repository,
             '--name', 'wine-bridge-sdk-prototype', '--dir', artifacts)
