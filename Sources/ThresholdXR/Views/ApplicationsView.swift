@@ -1,8 +1,13 @@
+import AppKit
+import UniformTypeIdentifiers
 import SwiftUI
 import ThresholdCore
 
 struct ApplicationsView: View {
     @Environment(AppModel.self) private var model
+    @State private var editor: ApplicationEditorDraft?
+    @State private var importSelection: QuestAPKSelection?
+    @State private var importError: String?
 
     var body: some View {
         ScrollView {
@@ -11,6 +16,12 @@ struct ApplicationsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                HStack {
+                    Button("Import Quest APK…", systemImage: "square.and.arrow.down") { importAPK() }
+                    Button("Add Application…", systemImage: "plus") { editManual() }
+                }
+                Text("Import a Quest APK to inspect its engine and preparation requirements. Runtime and manual apps can be edited here; manage Steam applications in Steam.")
+                    .font(.callout).foregroundStyle(.secondary)
                 catalog
                 history
 
@@ -21,6 +32,11 @@ struct ApplicationsView: View {
             .padding(24)
             .frame(maxWidth: 960, alignment: .leading)
         }
+        .sheet(item: $importSelection) { selection in QuestAPKImportView(apk: selection.url).environment(model) }
+        .sheet(item: $editor) { draft in ApplicationEditorView(draft: draft).environment(model) }
+        .alert("Application settings", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+            Button("OK") { importError = nil }
+        } message: { Text(importError ?? "") }
         .toolbar {
             ToolbarItem {
                 Button {
@@ -31,6 +47,34 @@ struct ApplicationsView: View {
                 .help("Read Threshold Home's application catalog again")
             }
         }
+    }
+
+    private func editManual(_ id: String? = nil) {
+        do { editor = try .manual(context: model.context, id: id) }
+        catch { importError = error.localizedDescription }
+    }
+
+    private func editRuntime(_ target: LaunchTarget) {
+        let context = model.context
+        Task {
+            do {
+                let profiles = try await Task.detached { try FrameworkCatalog.load(context: context) }.value
+                guard let profile = profiles.first(where: { $0.id == target.frameworkProfileID }) else {
+                    throw ApplicationEditingError.invalid("This profile is no longer available. Reload the list.")
+                }
+                let url = URL(fileURLWithPath: profile.path)
+                let data = try Data(contentsOf: url)
+                editor = ApplicationEditorDraft(source: .framework, url: url, original: data, originalID: profile.id, json: data)
+            } catch { importError = error.localizedDescription }
+        }
+    }
+
+    private func importAPK() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "apk") ?? .data]
+        panel.message = "Select a downloaded Quest APK to inspect it and choose preparation options."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        importSelection = QuestAPKSelection(url: url)
     }
 
     // MARK: Catalog
@@ -55,13 +99,16 @@ struct ApplicationsView: View {
         }
         ForEach(targets) { target in
             Divider()
-            ApplicationRow(target: target)
+            ApplicationRow(target: target) {
+                if source == .shellCatalog { editManual(target.id) }
+                else { editRuntime(target) }
+            }
         }
     }
 
     private func emptyText(_ source: ApplicationCatalog.Source) -> String {
         switch source {
-        case .shellCatalog: return "Nothing in apps.json. Add applications to it, then reload."
+        case .shellCatalog: return "No manually configured applications. Choose Add Application to create one."
         case .framework: return "threshold-runtime provides no applications."
         case .steam: return "Steam has no VR games installed."
         }
@@ -108,6 +155,7 @@ struct ApplicationsView: View {
 private struct ApplicationRow: View {
     @Environment(AppModel.self) private var model
     let target: LaunchTarget
+    var edit: () -> Void
 
     var body: some View {
         let active = model.launches.activeRecord(for: target.id)
@@ -173,6 +221,15 @@ private struct ApplicationRow: View {
     @ViewBuilder
     private func controls(active: LaunchRecord?, latest: LaunchRecord?, issues: [LaunchIssue]) -> some View {
         HStack(spacing: 8) {
+            if target.source != .steam {
+                Button("Edit…", action: edit).disabled(active != nil)
+            } else {
+                Button("Manage in Steam") {
+                    if let id = target.steamAppID, let url = URL(string: "steam://nav/games/details/\(id)") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
             if let log = (active ?? latest)?.logURL {
                 Button("Log") { model.open(log.path) }
                     .help("Open this launch's output log")
