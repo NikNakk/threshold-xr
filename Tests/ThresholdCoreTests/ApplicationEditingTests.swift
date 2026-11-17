@@ -41,6 +41,28 @@ struct ApplicationEditingTests {
         #expect(throws: ApplicationEditingError.self) { try ApplicationEditing.saveProfile(data, to: url, original: data) }
     }
 
+    @Test func runtimeRemovalRejectsTheWrongProfileOrExternalEdits() throws {
+        let home = try TemporaryDirectory()
+        let context = home.context(environment: ["THRESHOLD_PROFILES": home.url.appending(path: "profiles").path])
+        let json = #"{"schema":"threshold-runtime/app-profile-1","id":"old","title":"Gorilla Tag","guest":"android","components":{"host":"/host"},"android":{"pin":"/pin","apk":"/apk","app_root":"/tree","loader":"/loader"}}"#
+        let original = Data(json.utf8)
+        let selected = try home.write("profiles/old.json", json)
+        let outside = try home.write("other/old.json", json)
+        #expect(throws: ApplicationEditingError.self) {
+            try ApplicationEditing.removeProfile(at: outside, id: "old", original: original, context: context)
+        }
+        #expect(throws: ApplicationEditingError.self) {
+            try ApplicationEditing.removeProfile(at: selected, id: "new", original: original, context: context)
+        }
+        let modified = Data((json + "\n").utf8)
+        try modified.write(to: selected)
+        #expect(throws: ApplicationEditingError.self) {
+            try ApplicationEditing.removeProfile(at: selected, id: "old", original: original, context: context)
+        }
+        #expect(try Data(contentsOf: selected) == modified)
+        #expect(try Data(contentsOf: outside) == original)
+    }
+
     private func importer(_ home: TemporaryDirectory, succeeds: Bool) throws -> DiscoveryContext {
         try home.write("runtime/android/tools/quest_import.py", """
         import argparse, pathlib, json, sys, shutil

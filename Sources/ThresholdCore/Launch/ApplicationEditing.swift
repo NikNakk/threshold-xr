@@ -69,6 +69,19 @@ public enum ApplicationEditing {
         try write(data, to: url)
     }
 
+    public static func removeProfile(at url: URL, id: String, original: Data, context: DiscoveryContext) throws {
+        let directory = profileDirectory(context: context).resolvingSymlinksInPath().standardizedFileURL
+        let parent = url.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL
+        let attributes = try url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+        guard parent.path == directory.path, url.pathExtension == "json",
+              attributes.isRegularFile == true, attributes.isSymbolicLink != true,
+              try validateProfile(original)["id"] as? String == id else {
+            throw ApplicationEditingError.invalid("Only the selected profile in the runtime catalog can be removed.")
+        }
+        try checkUnchanged(url, original: original)
+        try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+    }
+
     /// Convenience entry point for APKs that need no additional content selection.
     public static func importAPK(_ apk: URL, context: DiscoveryContext) throws {
         let inspection = try QuestAPKImport.inspect(apk, context: context)

@@ -8,6 +8,20 @@ struct ApplicationsView: View {
     @State private var editor: ApplicationEditorDraft?
     @State private var importSelection: QuestAPKSelection?
     @State private var importError: String?
+    @State private var removal: RuntimeRemoval?
+
+    private struct RuntimeRemoval {
+        let target: LaunchTarget
+        let profile: FrameworkProfile
+        let data: Data
+
+        var details: String {
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            let android = object?["android"] as? [String: Any]
+            let expansion = android?["obb"] == nil ? "" : "\nIncludes an OBB expansion."
+            return "\(profile.id)\(expansion)\n\nThe launch profile will move to Trash. Game files stay on disk."
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -37,6 +51,15 @@ struct ApplicationsView: View {
         .alert("Application settings", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
             Button("OK") { importError = nil }
         } message: { Text(importError ?? "") }
+        .confirmationDialog(
+            removal.map { "Remove \($0.target.title)?" } ?? "Remove application?",
+            isPresented: Binding(get: { removal != nil }, set: { if !$0 { removal = nil } }),
+            titleVisibility: .visible, presenting: removal
+        ) { selected in
+            Button("Remove Profile", role: .destructive) { removeRuntime(selected) }
+        } message: { selected in
+            Text(selected.details)
+        }
         .toolbar {
             ToolbarItem {
                 Button {
@@ -69,6 +92,34 @@ struct ApplicationsView: View {
         }
     }
 
+    private func confirmRemoval(_ target: LaunchTarget) {
+        let context = model.context
+        Task {
+            do {
+                removal = try await Task.detached {
+                    let profiles = try FrameworkCatalog.load(context: context)
+                    guard let profile = profiles.first(where: { $0.id == target.frameworkProfileID }) else {
+                        throw ApplicationEditingError.invalid("This profile is no longer available. Reload the list.")
+                    }
+                    let data = try Data(contentsOf: URL(fileURLWithPath: profile.path))
+                    return RuntimeRemoval(target: target, profile: profile, data: data)
+                }.value
+            } catch { importError = error.localizedDescription }
+        }
+    }
+
+    private func removeRuntime(_ selected: RuntimeRemoval) {
+        guard model.launches.activeRecord(for: selected.target.id) == nil else {
+            importError = "Stop this application before removing its profile."
+            return
+        }
+        do {
+            try ApplicationEditing.removeProfile(at: URL(fileURLWithPath: selected.profile.path),
+                                                 id: selected.profile.id, original: selected.data, context: model.context)
+            Task { await model.discoverComponents() }
+        } catch { importError = error.localizedDescription }
+    }
+
     private func importAPK() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "apk") ?? .data]
@@ -99,10 +150,10 @@ struct ApplicationsView: View {
         }
         ForEach(targets) { target in
             Divider()
-            ApplicationRow(target: target) {
+            ApplicationRow(target: target, duplicateTitle: source == .framework && targets.filter { $0.title == target.title }.count > 1, edit: {
                 if source == .shellCatalog { editManual(target.id) }
                 else { editRuntime(target) }
-            }
+            }, remove: source == .framework ? { confirmRemoval(target) } : nil)
         }
     }
 
@@ -155,7 +206,9 @@ struct ApplicationsView: View {
 private struct ApplicationRow: View {
     @Environment(AppModel.self) private var model
     let target: LaunchTarget
+    let duplicateTitle: Bool
     var edit: () -> Void
+    var remove: (() -> Void)?
 
     var body: some View {
         let active = model.launches.activeRecord(for: target.id)
@@ -178,6 +231,9 @@ private struct ApplicationRow: View {
                     }
                     if let subtitle = target.subtitle {
                         Text(subtitle).font(.callout).foregroundStyle(.secondary)
+                    }
+                    if duplicateTitle, let id = target.frameworkProfileID {
+                        Text(id).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                     }
                     if let folder = target.steamInstallFolder {
                         // The target's URL is steam://..., not a file: show where Steam installed it.
@@ -223,6 +279,9 @@ private struct ApplicationRow: View {
         HStack(spacing: 8) {
             if target.source != .steam {
                 Button("Edit…", action: edit).disabled(active != nil)
+                if let remove {
+                    Button("Remove…", action: remove).disabled(active != nil)
+                }
             } else {
                 Button("Manage in Steam") {
                     if let id = target.steamAppID, let url = URL(string: "steam://nav/games/details/\(id)") {
