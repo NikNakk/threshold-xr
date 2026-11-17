@@ -79,21 +79,5 @@
         "role": "compatibility-layer"
       }
     ]
-  },
-  "macos-wine-xr": {
-    "repository": "NikNakk/macos-wine-xr",
-    "base": "claude/steamvr-openxr-driver",
-    "artifacts": [
-      {
-        "platform": "macos-arm64",
-        "os": "macos-26",
-        "role": "integration"
-      },
-      {
-        "platform": "windows-x86_64",
-        "os": "macos-15-intel",
-        "role": "windows-openxr-loader"
-      }
-    ]
   }
 }

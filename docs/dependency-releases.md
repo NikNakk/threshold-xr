@@ -27,7 +27,7 @@ threshold-runtime and alyx-native workspaces remain external application provide
   remains available for reviewed compatible combinations.
 
 - `ThresholdCore/Releases` decodes `threshold-xr/stack-1` and `threshold-xr/release-1`.
-  Seven repositories are explicitly allowed; unknown components, path-like IDs,
+  The public components plus the legacy private integration repository are explicitly allowed; unknown components, path-like IDs,
   duplicate pins/platforms, malformed checksums and mismatched release identities fail.
 - Components → **Install Stack…** imports a local stack JSON and downloads its pinned
   release manifests with URLSession. Every manifest must match the stack's SHA-256
@@ -64,7 +64,7 @@ supplied external Steam bridge components.
 
 ## Fork workflows
 
-The source of the rollout map is [release/forks.json](../release/forks.json).
+The six generated dependency workflows come from [release/forks.json](../release/forks.json). The public `threshold-wine-xr` component owns its separate paired-build workflow; do not overwrite it with the generic fork generator. The old `macos-wine-xr` component remains readable for existing private stacks but is not offered in the default public build catalogue.
 Each fork receives `.github/workflows/threshold-release.yml` and
 `scripts/threshold-release/{build.sh,package.py}` on `codex/threshold-releases`.
 Integration branches are not moved by the publisher.
@@ -77,7 +77,7 @@ Integration branches are not moved by the publisher.
 | klepton | NikNakk/Klepton | macos-native | arm64 klepton-ld translator |
 | dxmt | NikNakk/dxmt | macos-xr-native-sharing | x86_64 Unix modules + Windows x64 DLLs |
 | wine | NikNakk/wine-crossover | crossover-26.3.0 | x86_64-host WoW64 runtime |
-| macos-wine-xr | NikNakk/macos-wine-xr | claude/steamvr-openxr-driver | source-backed Steam Play tooling + Windows OpenXR loader |
+| threshold-wine-xr | NikNakk/threshold-wine-xr | main | paired macOS x86_64 bridge + Windows x64 bridge/loader |
 
 Successful pushes to `codex/threshold-releases` now publish experimental prereleases
 named `threshold-ci-<commit12>`. Tags and manual dispatches can also supply a version.
@@ -305,3 +305,9 @@ The common Wine packager fix for duplicate references to already relocated dylib
 included in the fork update. DXMT's downloaded LLVM/Wine work directory is moved
 outside the source tree to satisfy Meson's include-directory rules. Neither local
 checks nor a queued rerun establish that those builds now pass.
+
+## Public and private Windows XR selection
+
+The public bridge component is `threshold-wine-xr` from `NikNakk/threshold-wine-xr`, with `macos-x86_64` and `windows-x86_64` archives. Its own release workflow publishes a `threshold-xr/release-1` manifest and pinned dependency source/provenance. The desktop app validates and installs it like other independent components; Wine, DXMT, xrizer and Monado remain separate.
+
+Wine setup defaults to Windows Steam. After composing a local public runtime with the public bridge's preparation tool, **Components → Launch Stack → Select Windows XR Profile…** verifies its inventory and stores the exact prepared profile. Public profiles use `windows_xr.integration: windows-steam`, private profiles use `steam_play.integration: native-steam`, and legacy `steam_play` profiles retain their private meaning. Both modes keep their own prefixes and runtime directories; mixed profiles are rejected. Profile selection does not start/stop services, copy game data or alter the existing private installation. See the [public managed-profile guide](https://github.com/NikNakk/threshold-wine-xr/blob/main/docs/managed-profiles.md).

@@ -347,7 +347,8 @@ public struct ComponentDiscovery: Sendable {
     // MARK: Wine XR
 
     func wineXR(monado: MonadoInstallation) -> ComponentStatus {
-        let root = context.override(for: .wineXR) ?? context.workspace("macos-wine-xr")
+        let publicRoot = context.workspace("threshold-wine-xr")
+        let root = context.override(for: .wineXR) ?? (FileProbe.isDirectory(publicRoot) ? publicRoot : context.workspace("macos-wine-xr"))
         var artifacts: [DetectedArtifact] = []
         let source: ArtifactSource = context.override(for: .wineXR) != nil ? .userOverride : .workspace
         if FileProbe.isDirectory(root) {

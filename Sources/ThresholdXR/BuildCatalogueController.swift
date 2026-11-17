@@ -13,7 +13,7 @@ final class BuildCatalogueController {
     var installMessage: String?
     private let catalogue = GitHubBuildCatalogue()
     private var automaticTask: Task<Void, Never>?
-    let components = ReleaseRepository.repositories.keys.sorted()
+    let components = ReleaseRepository.repositories.keys.filter { $0 != "macos-wine-xr" }.sorted()
 
     var updateCount: Int {
         checks.values.filter { $0.build?.availability(among: installed) == .update }.count

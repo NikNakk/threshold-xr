@@ -16,6 +16,7 @@ REPOSITORIES = {
     'xrizer': 'NikNakk/xrizer', 'klepton': 'NikNakk/Klepton',
     'dxmt': 'NikNakk/dxmt', 'wine': 'NikNakk/wine-crossover',
     'macos-wine-xr': 'NikNakk/macos-wine-xr',
+    'threshold-wine-xr': 'NikNakk/threshold-wine-xr',
 }
 TOKEN = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,159}\Z')
 PLATFORMS = {'macos-arm64', 'macos-x86_64', 'windows-x86_64'}
@@ -212,6 +213,7 @@ def manifest(component, version, commit, workflow_run, artifacts, output, build_
         'xrizer': {'macos-arm64', 'windows-x86_64'}, 'klepton': {'macos-arm64'},
         'dxmt': {'macos-x86_64', 'windows-x86_64'}, 'wine': {'macos-x86_64'},
         'macos-wine-xr': {'macos-arm64', 'windows-x86_64'},
+        'threshold-wine-xr': {'macos-x86_64', 'windows-x86_64'},
     }[component]
     if {e['platform'] for e in entries} != required or (component == 'monado' and not build_tag):
         raise ValueError('Incomplete component release')

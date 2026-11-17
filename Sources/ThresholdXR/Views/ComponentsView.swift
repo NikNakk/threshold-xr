@@ -70,7 +70,7 @@ struct ComponentsView: View {
                systemImage: "arrow.down.circle") { showGitHubBuilds = true }
             .help("Find new dependency builds on GitHub and install or update them.")
         Button("Set Up Wine…", systemImage: "shippingbox") { showSteamBridgeBuild = true }
-            .help("Set up packaged Wine or build the optional native Steam bridge.")
+            .help("Use Windows Steam by default, or explicitly prepare the private native Steam integration.")
         Button {
             let panel = NSOpenPanel()
             panel.allowedContentTypes = [.json]
@@ -89,6 +89,15 @@ struct ComponentsView: View {
 
     @ViewBuilder private var secondaryActions: some View {
         Menu("Launch Stack", systemImage: "square.stack.3d.up") {
+            Button("Select Windows XR Profile…", systemImage: "person.crop.rectangle") {
+                let panel = NSOpenPanel()
+                panel.allowedContentTypes = [.json]
+                panel.message = "Choose a prepared Windows Steam or private native Steam launch-stack profile."
+                if panel.runModal() == .OK, let url = panel.url {
+                    Task { await model.selectWindowsXRProfile(url) }
+                }
+            }
+            Divider()
             ForEach(model.installedReleaseStacks) { installed in
                 Button(installed.id) { Task { await model.selectLaunchStack(installed) } }
             }

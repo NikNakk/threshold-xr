@@ -27,13 +27,13 @@ struct WineSetupView: View {
     private var setupContents: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Set Up Wine").font(.title2.weight(.semibold))
-            Text("Start with packaged Wine. Add the Steam bridge locally if you want to use native macOS Steam.")
+            Text("Windows Steam is the default. The private native macOS Steam integration is a separate, optional setup.")
                 .foregroundStyle(.secondary)
             Text("This prepares the runtime. Steam Play registration and VR components are configured in the setup guide.")
                 .font(.caption).foregroundStyle(.secondary)
             Picker("Choose a setup", selection: $addBridge) {
-                Text("Packaged Wine").tag(false)
-                Text("Wine + native Steam bridge").tag(true)
+                Text("Windows Steam (default)").tag(false)
+                Text("Private native Steam").tag(true)
             }
             .pickerStyle(.segmented)
             .disabled(busy)
@@ -45,7 +45,7 @@ struct WineSetupView: View {
                         .font(.headline)
                     Text(addBridge
                          ? "Compatible Windows games can use your macOS Steam client. Requires Apple Command Line Tools, Python 3, MinGW-w64 and Rosetta."
-                         : "Use for Windows applications or a separate Windows Steam installation. Rosetta is required on Apple Silicon. Choose the bridge option for the current managed Steam Play tool.")
+                         : "Use for Windows applications or a separate Windows Steam installation. Rosetta is required on Apple Silicon. Install the ordinary Windows Steam client in its own prefix, then select a prepared public Windows XR profile.")
                         .font(.callout).foregroundStyle(.secondary)
 
                     if setup.installed == nil {
@@ -150,9 +150,9 @@ struct WineSetupView: View {
                                 }
                                 Text(addBridge
                                      ? "For VR games, supply this runtime to the Steam Play preparation tool with your DXMT, xrizer and OpenXR bridge."
-                                     : "This is the Wine base. Install Windows Steam in a Wine prefix if using that route. The current managed Steam Play preparation tool requires the native Steam bridge.")
+                                     : "This is the Wine base. Install Windows Steam in a Wine prefix if using that route. Use the public bridge preparation tool to make a separate Windows Steam profile; no lsteamclient or Steam stand-in is required.")
                                     .font(.callout).fixedSize(horizontal: false, vertical: true)
-                                Link("Open Steam Play Setup Guide", destination: URL(string: "https://github.com/NikNakk/macos-wine-xr/blob/codex/threshold-releases/docs/managed-stacks.md")!)
+                                Link(addBridge ? "Open Private Steam Setup Guide" : "Open Windows Steam Setup Guide", destination: URL(string: addBridge ? "https://github.com/NikNakk/macos-wine-xr/blob/claude/steamvr-openxr-driver/docs/managed-stacks.md" : "https://github.com/NikNakk/threshold-wine-xr/blob/main/docs/managed-profiles.md")!)
                                 Text("Wine detection and Steam Play selection are separate settings. Existing game prefixes and your active Steam Play setup are preserved.")
                                     .font(.caption).foregroundStyle(.secondary)
                             }.padding(6).frame(maxWidth: .infinity, alignment: .leading)

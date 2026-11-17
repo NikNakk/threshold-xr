@@ -14,7 +14,8 @@ public enum ReleaseRepository {
         "monado": "NikNakk/monado", "kosmickrisp": "NikNakk/mesa",
         "xrizer": "NikNakk/xrizer", "klepton": "NikNakk/Klepton",
         "dxmt": "NikNakk/dxmt", "wine": "NikNakk/wine-crossover",
-        "macos-wine-xr": "NikNakk/macos-wine-xr",
+        "macos-wine-xr": "NikNakk/macos-wine-xr", // existing private stacks
+        "threshold-wine-xr": "NikNakk/threshold-wine-xr",
     ]
 
     static func token(_ value: String) -> Bool {
@@ -121,9 +122,17 @@ public struct ComponentRelease: Codable, Sendable {
             "xrizer": ["macos-arm64", "windows-x86_64"], "klepton": ["macos-arm64"],
             "dxmt": ["macos-x86_64", "windows-x86_64"], "wine": ["macos-x86_64"],
             "macos-wine-xr": ["macos-arm64", "windows-x86_64"],
+            "threshold-wine-xr": ["macos-x86_64", "windows-x86_64"],
         ]
         guard requiredPlatforms[component] == Set(artifacts.map(\.platform)) else {
             throw ReleaseError.invalid("The release is missing required platforms for \(component).")
+        }
+        if component == "threshold-wine-xr" {
+            guard provides["integration"] == "windows-steam",
+                  artifacts.contains(where: { $0.platform == "macos-x86_64" && $0.role == "wine-unix" }),
+                  artifacts.contains(where: { $0.platform == "windows-x86_64" && $0.role == "wine-dlls" }) else {
+                throw ReleaseError.invalid("The public Wine XR release must contain both Windows Steam bridge halves.")
+            }
         }
         if component == "monado" {
             guard provides["build_tag"]?.isEmpty == false,

@@ -84,6 +84,17 @@ final class AppModel {
         } catch { self.error = UserFacingError("Could not select launch stack", error) }
     }
 
+    func selectWindowsXRProfile(_ source: URL) async {
+        do {
+            let profile = try await Task.detached {
+                try PreparedWindowsXRProfile(data: Data(contentsOf: source))
+            }.value
+            try profile.write(to: LaunchStack.selectedURL(home: context.homeDirectory))
+            await discoverComponents()
+            record(.info, "Selected \(profile.integration.displayName) profile \(profile.id). Existing runtimes and prefixes were not changed.")
+        } catch { self.error = UserFacingError("Could not select Windows XR profile", error) }
+    }
+
     func clearLaunchStack() async {
         do {
             let path = LaunchStack.selectedURL(home: context.homeDirectory)
