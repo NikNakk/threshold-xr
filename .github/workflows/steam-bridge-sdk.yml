@@ -21,7 +21,6 @@ jobs:
     env:
       WINE_REVISION: ${{ inputs.wine_revision || '3eacaecc354e00c6e1d5bd23dc3e7a5ee5eb0ede' }}
       SDK_VERSION: ${{ inputs.version || 'prototype-1' }}
-      SDK_WORK: ${{ runner.temp }}/wine-sdk
     steps:
       - uses: actions/checkout@v7
       - name: Test bundle validation and staging
@@ -33,6 +32,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          SDK_WORK="$RUNNER_TEMP/wine-sdk"
+          echo "SDK_WORK=$SDK_WORK" >> "$GITHUB_ENV"
           brew install cmake ninja pkgconf bison mingw-w64 freetype gnutls vulkan-loader molten-vk
           identity=$({ brew list --versions; xcrun clang --version; xcrun --show-sdk-version; sw_vers -productVersion; printf '%s\n' "$SDK_WORK"; } | shasum -a 256 | awk '{print $1}')
           echo "identity=$identity" >> "$GITHUB_OUTPUT"
