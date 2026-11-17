@@ -6,14 +6,35 @@ Wine development bundle paired with one exact runtime. The user supplies that
 runtime, downloads the pinned Proton sources and compiles the bridge locally.
 
 The command-line implementation is in [`release/steam-bridge`](../release/steam-bridge/).
-Threshold XR also exposes it through **Components → Build Steam Bridge…**.
+Threshold XR exposes a guided path through **Components → Set Up Wine…**.
 
 ## Build from Threshold XR
 
-Choose an extracted SDK folder, an SDK archive, or an HTTPS archive download. For
-an archive/download, enter its trusted SHA-256 checksum. Choose the paired Wine
-runtime and press **Check Setup** to validate tools and runtime identity. Then
-**Build Local Runtime** compiles the bridge and stages a separate runtime.
+Choose between:
+
+- **Packaged Wine:** import prebuilt Wine without `lsteamclient`. No compiler or
+  Python is needed for the import. Use it for Windows applications or a separate
+  Windows Steam setup; Rosetta is required on Apple Silicon.
+- **Wine + native Steam bridge:** start with the same packaged Wine, then compile
+  only `lsteamclient` locally to use native macOS Steam with compatible Windows games.
+
+Press **Open GitHub Downloads**, download the `wine-bridge-sdk-prototype` artifact
+from the successful run, and extract its ZIP. Choose that extracted folder and
+press **Prepare Wine**. The app verifies both archives against its bundled, tested
+identities, extracts Wine into its own directory, and saves the matching SDK.
+
+For the bridge option, **Check Setup** checks the tools and runtime. **Build Steam
+Bridge** selects the matching runtime, SDK and checksum automatically. Ordinary
+setup does not require manually matching paths or copying hashes. **Custom SDK
+Build…** retains the advanced folder/archive/HTTPS workflow for other builds.
+
+The result provides **Show Runtime**, **Copy Runtime Path** and **Use for Wine
+Detection**. The last button updates Components' Wine detection override. Steam
+Play registration and runtime selection are separate: follow **Open Steam Play
+Setup Guide** to compose the VR dependencies and compatibility tool. The current
+managed preparation tool requires the native Steam bridge; a packaged-only Windows
+Steam route needs its own Windows Steam setup. This screen does not present those
+two Steam Play routes as already interchangeable.
 
 The sheet shows live output, supports cancellation, and provides the build folder
 and completed runtime in Finder. Each command has its own retained log; compiler
@@ -23,6 +44,8 @@ also cancels the active network task. Failed/cancelled runs keep their work file
 
 Outputs are stored in
 `~/Library/Application Support/Threshold XR/SteamBridgeBuilds/<run-id>/`.
+Imported base Wine and its SDK are stored in
+`~/Library/Application Support/Threshold XR/WinePackages/<version>/`.
 The operation does not select the runtime for Steam Play or update existing game
 prefixes. The bundled builder is copied from the command-line implementation using
 `python3 release/steam-bridge/sync-app-resources.py`; `--check` and the Python tests
@@ -30,6 +53,9 @@ detect stale copies. `scripts/make-app.zsh` includes the SwiftPM resource bundle
 the signed app.
 
 ## End-user dependencies
+
+These compiler dependencies apply to the optional bridge build. Importing packaged
+Wine uses the app's native archive reader and requires none of these build tools.
 
 - Apple Command Line Tools, providing Apple Clang, the macOS SDK and signing tools.
 - Python 3.9 or newer.
@@ -226,6 +252,13 @@ bundled resources. A real bundled setup check also passed against the locally
 exported SDK/runtime. To repeat that optional integration test, supply
 `THRESHOLD_TEST_STEAM_SDK` and `THRESHOLD_TEST_STEAM_RUNTIME` when running
 `swift test --filter SteamBridgeBuilderTests`.
+
+Seven Wine-kit importer tests pass, including real CI artifact import and handing
+the imported runtime/SDK archive to the builder's setup check. They also cover
+changed input archives, runtime identity checks, staging cleanup, retaining the SDK
+without executing it, reusing existing packages and refusing to overwrite modified
+installed files. Supply `THRESHOLD_TEST_WINE_KIT` with the extracted CI artifact
+folder to repeat the optional real import test.
 
 The complete Swift suite also passed with normal desktop/GPU access; optional
 installed-library/hardware tests were skipped. Ten packager tests pass, including

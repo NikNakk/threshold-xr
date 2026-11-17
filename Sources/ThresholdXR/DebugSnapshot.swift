@@ -28,9 +28,17 @@ enum DebugSnapshot {
             try? await Task.sleep(for: .milliseconds(100))
         }
         let suffix = appearanceName == .darkAqua ? "-dark" : ""
-        if CommandLine.arguments.contains("--snapshot-steam-bridge") {
-            let host = NSHostingView(rootView: SteamBridgeBuildView().environment(model))
-            host.frame = NSRect(x: 0, y: 0, width: 780, height: 760)
+        if CommandLine.arguments.contains("--snapshot-steam-bridge") || CommandLine.arguments.contains("--snapshot-wine-setup") || CommandLine.arguments.contains("--snapshot-wine-setup-bridge") {
+            let bridge = CommandLine.arguments.contains("--snapshot-wine-setup-bridge")
+            let guided = CommandLine.arguments.contains("--snapshot-wine-setup") || bridge
+            if guided, let index = CommandLine.arguments.firstIndex(of: "--wine-kit-folder"), index + 1 < CommandLine.arguments.count {
+                model.wineSetup = WineSetupController(root: directory.appending(path: "packages"))
+                model.wineSetup.sourceFolder = URL(fileURLWithPath: CommandLine.arguments[index + 1])
+                await model.wineSetup.prepare()
+            }
+            let root = guided ? AnyView(WineSetupView(addBridge: bridge).environment(model)) : AnyView(SteamBridgeBuildView().environment(model))
+            let host = NSHostingView(rootView: root)
+            host.frame = NSRect(x: 0, y: 0, width: guided ? 820 : 780, height: 760)
             let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
             window.appearance = NSAppearance(named: appearanceName)
             window.contentView = host
@@ -41,7 +49,8 @@ enum DebugSnapshot {
             if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
                 host.cacheDisplay(in: host.bounds, to: rep)
                 if let data = rep.representation(using: .png, properties: [:]) {
-                    try? data.write(to: directory.appending(path: "steam-bridge\(suffix).png"))
+                    let name = bridge ? "wine-setup-bridge" : (guided ? "wine-setup" : "steam-bridge")
+                    try? data.write(to: directory.appending(path: "\(name)\(suffix).png"))
                 }
             }
             window.orderOut(nil)

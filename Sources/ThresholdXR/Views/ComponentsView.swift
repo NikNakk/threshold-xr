@@ -41,7 +41,7 @@ struct ComponentsView: View {
         }
         .toolbar {
             ToolbarItem {
-                Button("Build Steam Bridge…", systemImage: "hammer") { showSteamBridgeBuild = true }
+                Button("Set Up Wine…", systemImage: "shippingbox") { showSteamBridgeBuild = true }
             }
             ToolbarItem {
                 Button {
@@ -89,7 +89,7 @@ struct ComponentsView: View {
                 .disabled(model.isDiscoveringComponents)
             }
         }
-        .sheet(isPresented: $showSteamBridgeBuild) { SteamBridgeBuildView().environment(model) }
+        .sheet(isPresented: $showSteamBridgeBuild) { WineSetupView().environment(model) }
         .task { await model.refreshReleaseStacks() }
     }
 }

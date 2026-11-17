@@ -46,7 +46,7 @@ let package = Package(
         .target(
             name: "ThresholdCore",
             dependencies: ["CThresholdArchive"],
-            resources: [.copy("Resources/SteamBridge")],
+            resources: [.copy("Resources/SteamBridge"), .copy("Resources/WineKit")],
             linkerSettings: [
                 .linkedFramework("IOKit")
             ]

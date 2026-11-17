@@ -7,6 +7,7 @@ import ThresholdCore
 final class SteamBridgeBuildController {
     var status = SteamBridgeBuildStatus()
     var isRunning = false
+    private(set) var sourceRuntime: URL?
     private let builder = SteamBridgeBuilder(root: SteamBridgeBuilder.defaultRoot())
     private var operation: Task<Void, Never>?
     private var polling: Task<Void, Never>?
@@ -14,6 +15,7 @@ final class SteamBridgeBuildController {
     func start(_ request: SteamBridgeBuildRequest, checkOnly: Bool) {
         guard !isRunning else { return }
         isRunning = true
+        sourceRuntime = request.runtime
         status = SteamBridgeBuildStatus()
         polling = Task { [weak self] in
             while !Task.isCancelled {

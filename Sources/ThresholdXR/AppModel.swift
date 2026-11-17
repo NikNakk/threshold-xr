@@ -62,6 +62,7 @@ final class AppModel {
     var installedReleaseStacks: [InstalledReleaseStack] = []
     var isInstallingRelease = false
     let steamBridgeBuild = SteamBridgeBuildController()
+    var wineSetup = WineSetupController()
 
     func refreshReleaseStacks() async {
         installedReleaseStacks = await releaseInstaller.installedStacks()

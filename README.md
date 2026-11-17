@@ -164,8 +164,11 @@ The check also found a brief moment while launchd tears the job down when `launc
 
 ## Dependency release installation
 
-The [Steam bridge local build prototype](docs/steam-bridge-local-build.md) uses a
-paired Wine development bundle to compile the bridge without building Wine locally.
+Components → **Set Up Wine…** offers packaged Wine without `lsteamclient` or an
+optional local Steam bridge build for native macOS Steam. The guided import selects
+the tested Wine/development-bundle pair automatically. See the
+[setup instructions](docs/steam-bridge-local-build.md) for the steps and current
+Steam Play integration boundary.
 
 Components → **Install Stack…** imports a pinned release-stack JSON and installs verified,
 versioned files from our GitHub forks. Activation remains a separate step. See the

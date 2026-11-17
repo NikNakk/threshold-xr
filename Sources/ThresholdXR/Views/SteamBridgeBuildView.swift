@@ -18,8 +18,8 @@ struct SteamBridgeBuildView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Build Steam Bridge").font(.title2.weight(.semibold))
-            Text("Compile the Steam bridge on this Mac and create a separate Wine runtime.")
+            Text("Custom Steam Bridge Build").font(.title2.weight(.semibold))
+            Text("Use your own matching Wine runtime and development bundle. The guided Set Up Wine flow selects the tested pair automatically.")
                 .foregroundStyle(.secondary)
             Form {
                 Section("Development bundle") {
