@@ -137,7 +137,8 @@ Checksums verify identity against the supplied expected value; they are not sign
 [`build-wine-sdk.sh`](../release/steam-bridge/build-wine-sdk.sh) fetches an exact Wine
 revision, uses the existing managed Wine release recipe, packages/relocates the
 runtime, then exports the matching SDK. Export happens after signing/relocation so
-the runtime hashes match the packaged result. For a local maintainer run:
+the runtime hashes match the packaged result. The clean producer currently requires
+an Intel macOS build host, matching CI. For an Intel maintainer run:
 
 ```sh
 SDK_WORK=/absolute/new/work-directory SDK_VERSION=prototype-1 \
@@ -147,12 +148,40 @@ SDK_WORK=/absolute/new/work-directory SDK_VERSION=prototype-1 \
 The manual [prototype workflow](../.github/workflows/steam-bridge-sdk.yml) performs
 this on an Intel macOS runner and uploads the Wine runtime/development bundle as
 short-lived Actions artifacts. It does not compile or upload the Steam bridge and
-does not publish a GitHub release. Compiler versions are recorded; byte-identical reproduction across
-different Apple/Homebrew toolchains is not claimed.
+does not publish a GitHub release. Compiler versions are recorded; byte-identical
+reproduction across different Apple/Homebrew toolchains is not claimed.
+
+The producer separates `build` and `package` modes. CI caches the completed raw Wine
+build before packaging, keyed by source revision, build recipe, compiler/SDK,
+installed Homebrew versions, macOS version and work path. Packaging clones the raw
+runtime and works on that copy; a failed packaging attempt cannot mutate the cached
+input. A completion receipt rejects a cache from a different revision, recipe or
+work path.
 
 The first clean producer run is
 [43959987641](https://github.com/NikNakk/threshold-xr/actions/runs/43959987641), on the
-isolated `codex/steam-bridge-sdk` branch. Results are recorded below when validated.
+isolated `codex/steam-bridge-sdk` branch. Wine compiled and installed successfully,
+but packaging exposed a shared-library identity bug: an already relocated copy of
+`libnettle` was compared with its unchanged external original. The packager now
+retains original hashes for copied libraries. Real Mach-O regression tests reproduce
+the old failure, pass with the fix, and still reject different libraries with the
+same filename. The corrected clean run is
+[43984029292](https://github.com/NikNakk/threshold-xr/actions/runs/43984029292).
+`actionlint` validates the workflow expressions before this retry.
+
+The maintainer validator can watch a specific CI commit, download the resulting
+artifacts, verify their identities, extract the runtime using the app's guarded
+extractor, compile the bridge, stage a runtime and check `wine --version`:
+
+```sh
+python3 release/steam-bridge/validate-ci.py --run RUN_ID --commit EXPECTED_COMMIT \
+  --work /path/to/new-validation-directory
+```
+
+It requires authenticated `gh` plus the normal local build tools, and writes
+`validation.json` on success or `failure.json` on error. It never launches Steam or
+a game. `--proton-archive FILE` can reuse an already downloaded pinned source tarball.
+
 Remaining integration work includes testing the paired runtime on supported macOS
 versions, exposing published SDK versions without a manually entered URL/checksum,
 and Steam/game validation of a newly compiled bridge.
@@ -184,6 +213,13 @@ bundled resources. A real bundled setup check also passed against the locally
 exported SDK/runtime. To repeat that optional integration test, supply
 `THRESHOLD_TEST_STEAM_SDK` and `THRESHOLD_TEST_STEAM_RUNTIME` when running
 `swift test --filter SteamBridgeBuilderTests`.
+
+The complete Swift suite also passed with normal desktop/GPU access; optional
+installed-library/hardware tests were skipped. Ten packager tests pass, including
+the two real Mach-O relocation regressions. A packaging-only integration check on
+an isolated fixture exported an SDK matching its packaged `ntdll` files and left
+the raw fixture inputs unchanged. That fixture is not a complete runnable Wine
+installation; the clean CI pair is validated separately.
 
 Compiler depfiles are checked: all non-system source dependencies must come from
 the isolated work tree, development bundle or selected Apple SDK. No access to the
