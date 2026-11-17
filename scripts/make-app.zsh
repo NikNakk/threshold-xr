@@ -67,6 +67,7 @@ trap 'rm -rf "$staging"' EXIT
 app="$staging/$name.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary" "$app/Contents/MacOS/$executable"
+cp -R "$bin_path/ThresholdXR_ThresholdCore.bundle" "$app/Contents/Resources/"
 
 # Every standard macOS icon size from 1024px artwork
 # (Resources/AppIcon.png and ThresholdHome/Resources/AppIcon.png).

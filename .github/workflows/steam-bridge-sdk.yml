@@ -1,0 +1,68 @@
+name: Prototype Wine bridge development bundle
+on:
+  push:
+    branches: [codex/steam-bridge-sdk]
+  workflow_dispatch:
+    inputs:
+      wine_revision:
+        description: Wine commit containing both Steam redirect changes
+        required: true
+        default: 3eacaecc354e00c6e1d5bd23dc3e7a5ee5eb0ede
+      version:
+        description: Version for the paired runtime and development bundle
+        required: true
+        default: prototype-1
+permissions:
+  contents: read
+jobs:
+  wine-sdk:
+    runs-on: macos-15-intel
+    timeout-minutes: 180
+    env:
+      WINE_REVISION: ${{ inputs.wine_revision || '3eacaecc354e00c6e1d5bd23dc3e7a5ee5eb0ede' }}
+      SDK_VERSION: ${{ inputs.version || 'prototype-1' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test bundle validation and staging
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s release/steam-bridge/tests -v
+      - name: Test runtime dependency relocation
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s release/tests -v
+      - name: Install build dependencies and identify toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_WORK="$RUNNER_TEMP/wine-sdk"
+          echo "SDK_WORK=$SDK_WORK" >> "$GITHUB_ENV"
+          brew install cmake ninja pkgconf bison mingw-w64 freetype gnutls vulkan-loader molten-vk
+          identity=$({ brew list --versions; xcrun clang --version; xcrun --show-sdk-version; sw_vers -productVersion; printf '%s\n' "$SDK_WORK"; } | shasum -a 256 | awk '{print $1}')
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v6
+        id: wine-cache
+        with:
+          path: |
+            ${{ env.SDK_WORK }}/wine
+            ${{ env.SDK_WORK }}/runtime
+            ${{ env.SDK_WORK }}/.wine-build-complete.json
+          key: wine-build-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.WINE_REVISION }}-${{ hashFiles('release/build.sh') }}-${{ steps.toolchain.outputs.identity }}
+      - name: Build matching Wine runtime
+        if: steps.wine-cache.outputs.cache-hit != 'true'
+        run: bash release/steam-bridge/build-wine-sdk.sh build
+      - name: Save completed Wine build before packaging
+        if: steps.wine-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ env.SDK_WORK }}/wine
+            ${{ env.SDK_WORK }}/runtime
+            ${{ env.SDK_WORK }}/.wine-build-complete.json
+          key: ${{ steps.wine-cache.outputs.cache-primary-key }}
+      - name: Package matching Wine runtime and development bundle
+        run: bash release/steam-bridge/build-wine-sdk.sh package
+      - name: Upload Wine-only prototype
+        uses: actions/upload-artifact@v7
+        with:
+          name: wine-bridge-sdk-prototype
+          path: ${{ runner.temp }}/wine-sdk/dist/*
+          if-no-files-found: error
+          retention-days: 7

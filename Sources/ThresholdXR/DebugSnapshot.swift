@@ -28,10 +28,65 @@ enum DebugSnapshot {
             try? await Task.sleep(for: .milliseconds(100))
         }
         let suffix = appearanceName == .darkAqua ? "-dark" : ""
+        if CommandLine.arguments.contains("--snapshot-github-builds") {
+            await model.buildCatalogue.refresh(installer: model.releaseInstaller)
+            let host = NSHostingView(rootView: GitHubBuildsView().environment(model))
+            host.frame = NSRect(x: 0, y: 0, width: 740, height: 660)
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: appearanceName)
+            window.contentView = host
+            window.orderBack(nil)
+            window.alphaValue = 0.01
+            try? await Task.sleep(for: .milliseconds(700))
+            host.layoutSubtreeIfNeeded()
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                host.cacheDisplay(in: host.bounds, to: rep)
+                if let data = rep.representation(using: .png, properties: [:]) {
+                    try? data.write(to: directory.appending(path: "github-builds\(suffix).png"))
+                }
+            }
+            window.orderOut(nil)
+            NSApp.terminate(nil)
+            return
+        }
+        if CommandLine.arguments.contains("--snapshot-steam-bridge") || CommandLine.arguments.contains("--snapshot-wine-setup") || CommandLine.arguments.contains("--snapshot-wine-setup-bridge") {
+            let bridge = CommandLine.arguments.contains("--snapshot-wine-setup-bridge")
+            let guided = CommandLine.arguments.contains("--snapshot-wine-setup") || bridge
+            if guided, let index = CommandLine.arguments.firstIndex(of: "--wine-kit-folder"), index + 1 < CommandLine.arguments.count {
+                model.wineSetup = WineSetupController(root: directory.appending(path: "packages"))
+                model.wineSetup.sourceFolder = URL(fileURLWithPath: CommandLine.arguments[index + 1])
+                await model.wineSetup.prepare()
+            }
+            let root = guided ? AnyView(WineSetupView(addBridge: bridge).environment(model)) : AnyView(SteamBridgeBuildView().environment(model))
+            let host = NSHostingView(rootView: root)
+            host.frame = NSRect(x: 0, y: 0, width: guided ? 820 : 780, height: 760)
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: appearanceName)
+            window.contentView = host
+            window.orderBack(nil)
+            window.alphaValue = 0.01
+            try? await Task.sleep(for: .milliseconds(700))
+            host.layoutSubtreeIfNeeded()
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                host.cacheDisplay(in: host.bounds, to: rep)
+                if let data = rep.representation(using: .png, properties: [:]) {
+                    let name = bridge ? "wine-setup-bridge" : (guided ? "wine-setup" : "steam-bridge")
+                    try? data.write(to: directory.appending(path: "\(name)\(suffix).png"))
+                }
+            }
+            window.orderOut(nil)
+            NSApp.terminate(nil)
+            return
+        }
+        let widthIndex = CommandLine.arguments.firstIndex(of: "--snapshot-width")
+        let requestedWidth = widthIndex.flatMap { index in
+            index + 1 < CommandLine.arguments.count ? Double(CommandLine.arguments[index + 1]) : nil
+        }
+        let snapshotWidth = max(860, requestedWidth ?? 1120)
         for item in SidebarItem.allCases {
             let root = SnapshotRoot(item: item).environment(model)
             let host = NSHostingView(rootView: root)
-            host.frame = NSRect(x: 0, y: 0, width: 1120, height: 780)
+            host.frame = NSRect(x: 0, y: 0, width: snapshotWidth, height: 780)
             let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
             window.appearance = NSAppearance(named: appearanceName)
             window.contentView = host

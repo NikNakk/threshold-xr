@@ -75,7 +75,15 @@ public struct ApplicationCatalog: Sendable, Equatable {
         case let .success(profiles):
             let runner = FrameworkCatalog.runner(context: context)
             let taken = Set(catalog.targets.map(\.id))
-            catalog.targets += profiles.map { LaunchTarget(profile: $0, runner: runner) }.filter { !taken.contains($0.id) }
+            catalog.targets += profiles.map { profile in
+                var target = LaunchTarget(profile: profile, runner: runner)
+                let selected = context.environment["THRESHOLD_LAUNCH_STACK"].map(context.expand)
+                    ?? LaunchStack.selectedURL(home: context.homeDirectory)
+                if context.environment["THRESHOLD_LAUNCH_STACK"] != nil || FileProbe.exists(selected) {
+                    target.environment["THRESHOLD_LAUNCH_STACK"] = selected.path
+                }
+                return target
+            }.filter { !taken.contains($0.id) }
         case let .failure(error):
             catalog.problems.append(Problem(source: .framework, message: error.localizedDescription))
         }

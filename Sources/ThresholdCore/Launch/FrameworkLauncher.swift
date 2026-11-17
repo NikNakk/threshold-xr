@@ -84,7 +84,12 @@ public enum FrameworkCatalog {
         let process = Process()
         process.executableURL = runner
         process.arguments = ["--list", "--json"]
-        process.environment = context.environment
+        var environment = context.environment
+        let selected = LaunchStack.selectedURL(home: context.homeDirectory)
+        if environment["THRESHOLD_LAUNCH_STACK"] == nil, FileProbe.exists(selected) {
+            environment["THRESHOLD_LAUNCH_STACK"] = selected.path
+        }
+        process.environment = environment
         let output = Pipe(), errors = Pipe()
         process.standardOutput = output
         process.standardError = errors

@@ -58,6 +58,53 @@ final class AppModel {
     var monado: MonadoStatus?
     var components: [ComponentStatus] = []
     var isDiscoveringComponents = false
+    let releaseInstaller = ReleaseInstaller(root: ReleaseInstaller.defaultRoot())
+    var installedReleaseStacks: [InstalledReleaseStack] = []
+    var isInstallingRelease = false
+    let buildCatalogue = BuildCatalogueController()
+    let steamBridgeBuild = SteamBridgeBuildController()
+    var wineSetup = WineSetupController()
+
+    func refreshReleaseStacks() async {
+        installedReleaseStacks = await releaseInstaller.installedStacks()
+        buildCatalogue.installed = await releaseInstaller.installedComponents()
+    }
+
+    func selectLaunchStack(_ installed: InstalledReleaseStack) async {
+        do {
+            let root = ReleaseInstaller.defaultRoot(home: context.homeDirectory)
+            var selection = try await Task.detached {
+                try LaunchStack.resolve(installed, root: root)
+            }.value
+            let runner = FrameworkCatalog.runner(context: context)
+            if FileProbe.isExecutableFile(runner) { selection.frameworkRunner = runner.path }
+            try selection.write(to: LaunchStack.selectedURL(home: context.homeDirectory))
+            await discoverComponents()
+            record(.info, "Selected client dependencies from \(installed.id). Monado must have the matching service build tag before applications can launch.")
+        } catch { self.error = UserFacingError("Could not select launch stack", error) }
+    }
+
+    func clearLaunchStack() async {
+        do {
+            let path = LaunchStack.selectedURL(home: context.homeDirectory)
+            if FileManager.default.fileExists(atPath: path.path) { try FileManager.default.removeItem(at: path) }
+            await discoverComponents()
+        } catch { self.error = UserFacingError("Could not clear launch stack", error) }
+    }
+
+    func installReleaseStack(_ url: URL) async {
+        guard !isInstallingRelease else { return }
+        isInstallingRelease = true
+        defer { isInstallingRelease = false }
+        do {
+            let stack = try JSONDecoder().decode(ReleaseStack.self, from: Data(contentsOf: url))
+            try await releaseInstaller.install(stack)
+            await refreshReleaseStacks()
+            record(.info, "Installed release stack \(stack.id). Its files are available in the Components folder.")
+        } catch {
+            self.error = UserFacingError("Could not install release stack", error)
+        }
+    }
     var busyAction: ServiceAction?
     /// Set when a stop request timed out, so the UI can offer SIGKILL.
     var offerForceStop = false
@@ -103,6 +150,7 @@ final class AppModel {
         guard refreshTask == nil else { return }
         record(.info, "Threshold XR started. Monado is managed through its existing LaunchAgent and is never stopped when this app quits.")
         Task { await discoverComponents() }
+        buildCatalogue.start(installer: releaseInstaller)
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }

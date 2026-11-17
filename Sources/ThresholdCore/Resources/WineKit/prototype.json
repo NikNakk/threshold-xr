@@ -1,0 +1,21 @@
+{
+  "schema": "threshold-xr/wine-kit-1",
+  "id": "prototype-1",
+  "title": "Wine 11.0 prototype",
+  "download_url": "https://github.com/NikNakk/threshold-xr/actions/runs/43984029292",
+  "runtime": {
+    "name": "wine-prototype-1-macos-x86_64.tar.xz",
+    "sha256": "bfe9f98db3eabbfd2638685007402e2e6f27808a6e05b32af0a87b1ba4b7b510",
+    "size": 224953840
+  },
+  "sdk": {
+    "name": "wine-bridge-sdk-prototype-1.tar.gz",
+    "sha256": "1a038c3e593f6a32369a1fb084102d0f60ea25c136458a5880ba92abfddd71f5",
+    "size": 61544462
+  },
+  "runtime_files": {
+    "lib/wine/i386-windows/ntdll.dll": "e7064692595320f579ca20edacbd94edbaea3fceddf585b0d3b4b7f6ec3869fa",
+    "lib/wine/x86_64-unix/ntdll.so": "840c6f1d35c647c6ad90fab793ad5873d68d271abd54f3cbcb06955174b3493a",
+    "lib/wine/x86_64-windows/ntdll.dll": "cad12591b7ce1decc165ebfbe3f1a9ccd09244869d659ebaf52e7589e8567d1d"
+  }
+}

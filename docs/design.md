@@ -151,6 +151,8 @@ Source builds run the repository's own build entry points, such as Monado's CMak
 
 ### 5.8 Binary releases and installation (decided 16 November 2026)
 
+Implementation and current rollout status: [Dependency releases and installation](dependency-releases.md).
+
 Threshold XR itself installs from Homebrew (a cask in the public `niknakk/threshold` tap).
 Its dependencies do **not** use Homebrew: Threshold XR downloads them from GitHub releases
 into versioned folders (§5.3). Homebrew keeps one version per formula and upgrades formulae
