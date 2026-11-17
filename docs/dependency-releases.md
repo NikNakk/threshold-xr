@@ -8,6 +8,24 @@ threshold-runtime and alyx-native workspaces remain external application provide
 
 ## What is implemented
 
+- Components → **GitHub Builds…** discovers complete published builds from the seven
+  allowlisted forks, including experimental prereleases. It checks at startup and hourly
+  while the app is open; **Check for Updates** also checks manually (one-minute cooldown).
+  **Install** / **Update** downloads a component without a login or local stack JSON.
+  The toolbar shows the number of available updates. Drafts and Actions-only artifacts
+  are excluded. Each release must have a valid manifest and all required platform assets;
+  declared sizes and GitHub asset SHA-256 digests, when available, must agree.
+- Discovery pins the manifest SHA-256, which installation checks again before extraction.
+  Installed manifests identify versions; newer build dates trigger Update, older remote
+  builds never downgrade automatically, and changed manifests for an existing version
+  are blocked. Failed checks remain visible and preserve the last known build, with
+  installation disabled until a successful recheck. A component without a complete release is shown as
+  unavailable, rather than being presented as an up-to-date installation.
+- Single-component installs keep provenance beside the installed files without creating
+  a launch-stack receipt. Installation and activation are separate: it does not restart
+  Monado or change service, Steam or profile settings. The existing pinned-stack import
+  remains available for reviewed compatible combinations.
+
 - `ThresholdCore/Releases` decodes `threshold-xr/stack-1` and `threshold-xr/release-1`.
   Seven repositories are explicitly allowed; unknown components, path-like IDs,
   duplicate pins/platforms, malformed checksums and mismatched release identities fail.
@@ -38,7 +56,8 @@ threshold-runtime and alyx-native workspaces remain external application provide
 **Installation currently makes verified versioned files available; it does not activate
 an XR stack.** Existing discovery, profiles and service configuration continue to select
 the running components. The Installed Releases toolbar button opens the managed folder.
-There is no automatic update, service restart, system OpenXR registration change
+Updates are detected automatically but installed only by a click. There is no automatic
+service restart, system OpenXR registration change
 or rollback UI. The Launch Stack menu now selects managed client paths for native
 profiles. A separate local tool prepares a private Wine overlay from explicitly
 supplied external Steam bridge components.
@@ -60,12 +79,13 @@ Integration branches are not moved by the publisher.
 | wine | NikNakk/wine-crossover | crossover-26.3.0 | x86_64-host WoW64 runtime |
 | macos-wine-xr | NikNakk/macos-wine-xr | claude/steamvr-openxr-driver | source-backed Steam Play tooling + Windows OpenXR loader |
 
-The first push to a review branch builds archives as Actions artifacts and **does not
-publish a release**. A `threshold-<version>` tag or manual workflow dispatch with a
-version builds and publishes an experimental prerelease. Once GitHub has registered the workflow, the Actions API can dispatch it on the
-review branch. This was verified for Mesa and macos-wine-xr during this rollout;
-both received manual preview-build requests. Alternatively push a release tag at
-the workflow commit. The GitHub UI may only list workflows present on the default branch.
+Successful pushes to `codex/threshold-releases` now publish experimental prereleases
+named `threshold-ci-<commit12>`. Tags and manual dispatches can also supply a version.
+A complete release is uploaded as a draft before publication, so clients cannot discover
+an upload in progress. Failed or cancelled builds do not publish. The existing
+`macos-wine-xr` public binary hold remains in place. The GitHub UI may only list workflows
+present on the default branch. These workflows currently track the review branches;
+merging them into integration branches needs a corresponding trigger change.
 
 Builds use macOS arm64 and Intel runners, with MinGW for Windows outputs. They never
 install a service or initialize a user's Wine prefix. LLVM/Wine SDK inputs used by
@@ -271,3 +291,17 @@ tests. A fresh public launcher package compiled; a side-by-side app assembled fr
 passed `codesign --verify --deep --strict` using fixture runtime files, without starting
 Steam or creating Wine prefixes. The existing local threshold-runtime catalog still
 loads all four profiles. Real games, Steam sign-in and headset use remain untested.
+
+## GitHub catalogue validation (17 November 2026)
+
+The successful Mesa run 43942012880 was promoted without rebuilding to the preview
+`threshold-ci-6b9c88ae908b`, with its original archive checksum and source commit.
+The native app catalogue and installer were exercised against that public release in
+an isolated temporary directory. Other components appear as unavailable until their
+complete fork builds succeed and publish. This distinction is intentional: a green
+build for only one architecture does not make a multi-platform component installable.
+
+The common Wine packager fix for duplicate references to already relocated dylibs is
+included in the fork update. DXMT's downloaded LLVM/Wine work directory is moved
+outside the source tree to satisfy Meson's include-directory rules. Neither local
+checks nor a queued rerun establish that those builds now pass.

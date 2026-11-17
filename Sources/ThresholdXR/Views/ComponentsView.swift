@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct ComponentsView: View {
     @Environment(AppModel.self) private var model
     @State private var selection: ComponentID? = .monado
+    @State private var showGitHubBuilds = false
     @State private var showSteamBridgeBuild = false
 
     var body: some View {
@@ -41,6 +42,10 @@ struct ComponentsView: View {
         }
         .toolbar {
             ToolbarItem {
+                Button(model.buildCatalogue.updateCount > 0 ? "GitHub Builds (\(model.buildCatalogue.updateCount) updates)…" : "GitHub Builds…",
+                       systemImage: "arrow.down.circle") { showGitHubBuilds = true }
+            }
+            ToolbarItem {
                 Button("Set Up Wine…", systemImage: "shippingbox") { showSteamBridgeBuild = true }
             }
             ToolbarItem {
@@ -55,7 +60,7 @@ struct ComponentsView: View {
                     if model.isInstallingRelease { ProgressView("Installing stack…") }
                     else { Label("Install Stack…", systemImage: "arrow.down.circle") }
                 }
-                .disabled(model.isInstallingRelease)
+                .disabled(model.isInstallingRelease || model.buildCatalogue.installing != nil)
             }
             ToolbarItem {
                 Menu("Launch Stack", systemImage: "square.stack.3d.up") {
@@ -65,14 +70,14 @@ struct ComponentsView: View {
                     Divider()
                     Button("Use Profile Dependencies") { Task { await model.clearLaunchStack() } }
                 }
-                .disabled(model.isInstallingRelease)
+                .disabled(model.isInstallingRelease || model.buildCatalogue.installing != nil)
                 .help("Select client dependencies for Threshold Runtime; this does not switch the Monado service.")
             }
             ToolbarItem {
                 Button("Installed Releases", systemImage: "folder") {
                     NSWorkspace.shared.open(ReleaseInstaller.defaultRoot())
                 }
-                .disabled(model.installedReleaseStacks.isEmpty)
+                .disabled(model.buildCatalogue.installed.isEmpty)
                 .help(model.installedReleaseStacks.map(\.id).joined(separator: ", "))
             }
             ToolbarItem {
@@ -89,6 +94,7 @@ struct ComponentsView: View {
                 .disabled(model.isDiscoveringComponents)
             }
         }
+        .sheet(isPresented: $showGitHubBuilds) { GitHubBuildsView().environment(model) }
         .sheet(isPresented: $showSteamBridgeBuild) { WineSetupView().environment(model) }
         .task { await model.refreshReleaseStacks() }
     }

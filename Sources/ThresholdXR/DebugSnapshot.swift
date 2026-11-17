@@ -28,6 +28,27 @@ enum DebugSnapshot {
             try? await Task.sleep(for: .milliseconds(100))
         }
         let suffix = appearanceName == .darkAqua ? "-dark" : ""
+        if CommandLine.arguments.contains("--snapshot-github-builds") {
+            await model.buildCatalogue.refresh(installer: model.releaseInstaller)
+            let host = NSHostingView(rootView: GitHubBuildsView().environment(model))
+            host.frame = NSRect(x: 0, y: 0, width: 740, height: 660)
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: appearanceName)
+            window.contentView = host
+            window.orderBack(nil)
+            window.alphaValue = 0.01
+            try? await Task.sleep(for: .milliseconds(700))
+            host.layoutSubtreeIfNeeded()
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                host.cacheDisplay(in: host.bounds, to: rep)
+                if let data = rep.representation(using: .png, properties: [:]) {
+                    try? data.write(to: directory.appending(path: "github-builds\(suffix).png"))
+                }
+            }
+            window.orderOut(nil)
+            NSApp.terminate(nil)
+            return
+        }
         if CommandLine.arguments.contains("--snapshot-steam-bridge") || CommandLine.arguments.contains("--snapshot-wine-setup") || CommandLine.arguments.contains("--snapshot-wine-setup-bridge") {
             let bridge = CommandLine.arguments.contains("--snapshot-wine-setup-bridge")
             let guided = CommandLine.arguments.contains("--snapshot-wine-setup") || bridge

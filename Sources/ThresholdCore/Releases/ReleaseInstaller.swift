@@ -8,14 +8,18 @@ public protocol ReleaseDownloading: Sendable {
 }
 
 public struct GitHubReleaseDownloader: ReleaseDownloading {
-    public init() {}
+    private let timeoutInterval: TimeInterval
+    public init(timeoutInterval: TimeInterval = 300) { self.timeoutInterval = timeoutInterval }
     public func download(_ url: URL, to destination: URL, maximumSize: Int64) async throws {
         var request = URLRequest(url: url)
         request.setValue("ThresholdXR", forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 300
+        request.timeoutInterval = timeoutInterval
         let (temporary, response) = try await URLSession.shared.download(
             for: request, delegate: SizeLimitedDownload(maximumSize: maximumSize))
         defer { try? FileManager.default.removeItem(at: temporary) }
+        if let http = response as? HTTPURLResponse, [403, 429].contains(http.statusCode) {
+            throw ReleaseError.invalid("GitHub is limiting requests or denying access. Try checking again later.")
+        }
         guard let http = response as? HTTPURLResponse, http.statusCode == 200,
               http.url?.scheme == "https" else {
             throw ReleaseError.invalid("GitHub could not supply \(url.lastPathComponent). The release may not be published yet.")
@@ -45,6 +49,12 @@ public struct InstalledReleaseStack: Identifiable, Sendable {
     public var id: String { stack.id }
 }
 
+public struct InstalledComponentRelease: Sendable {
+    public var release: ComponentRelease
+    public var manifestSHA256: String
+    public var directory: URL
+}
+
 /// Serializes installs in this app. A per-root file lock also excludes other app processes.
 public actor ReleaseInstaller {
     public let root: URL
@@ -70,10 +80,41 @@ public actor ReleaseInstaller {
         }.sorted { $0.id < $1.id }
     }
 
+    public func installedComponents() -> [InstalledComponentRelease] {
+        ReleaseRepository.repositories.keys.sorted().flatMap { component in
+            let parent = root.appending(path: component)
+            return ((try? fm.contentsOfDirectory(at: parent, includingPropertiesForKeys: nil)) ?? []).compactMap { directory -> InstalledComponentRelease? in
+                guard let bytes = try? Data(contentsOf: directory.appending(path: "threshold-release.json")),
+                      let release = try? JSONDecoder().decode(ComponentRelease.self, from: bytes),
+                      release.component == component, release.version == directory.lastPathComponent else { return nil }
+                let digest = ReleaseRepository.digest(bytes)
+                let pin = ReleaseStack.Pin(component: component, repository: release.repository,
+                                           tag: "threshold-" + release.version, manifestSHA256: digest)
+                guard (try? release.validate(pin: pin)) != nil,
+                      release.artifacts.allSatisfy({ artifact in
+                          var isDirectory: ObjCBool = false
+                          return fm.fileExists(atPath: directory.appending(path: artifact.platform).path, isDirectory: &isDirectory) && isDirectory.boolValue
+                      }) else { return nil }
+                return InstalledComponentRelease(release: release, manifestSHA256: digest, directory: directory)
+            }
+        }
+    }
+
+    /// Installs one verified build without creating a launch-stack selection.
+    public func install(_ pin: ReleaseStack.Pin) async throws {
+        let stack = ReleaseStack(schema: "threshold-xr/stack-1", id: UUID().uuidString,
+                                 channel: "experimental", releases: [pin])
+        _ = try await performInstall(stack, writeReceipt: false)
+    }
+
     /// All manifests are verified before any archives are downloaded. The stack receipt
     /// appears only once every component has been installed successfully.
     @discardableResult
     public func install(_ stack: ReleaseStack) async throws -> InstalledReleaseStack {
+        try await performInstall(stack, writeReceipt: true)
+    }
+
+    private func performInstall(_ stack: ReleaseStack, writeReceipt: Bool) async throws -> InstalledReleaseStack {
         try stack.validate()
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         let lock = open(root.appending(path: ".install.lock").path, O_CREAT | O_RDWR, 0o600)
@@ -107,7 +148,11 @@ public actor ReleaseInstaller {
             let destination = root.appending(path: "\(release.component)/\(release.version)")
             if fm.fileExists(atPath: destination.path) {
                 // Never overwrite a previous installation or a manual directory.
-                guard (try? Data(contentsOf: destination.appending(path: "threshold-release.json"))) == manifest else {
+                guard (try? Data(contentsOf: destination.appending(path: "threshold-release.json"))) == manifest,
+                      release.artifacts.allSatisfy({ artifact in
+                          var directory: ObjCBool = false
+                          return fm.fileExists(atPath: destination.appending(path: artifact.platform).path, isDirectory: &directory) && directory.boolValue
+                      }) else {
                     throw ReleaseError.invalid("\(release.component) \(release.version) already exists with different or missing provenance.")
                 }
                 continue
@@ -143,6 +188,7 @@ public actor ReleaseInstaller {
             try fm.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
             try fm.moveItem(at: componentStage, to: destination)
         }
+        if !writeReceipt { return InstalledReleaseStack(stack: stack, directory: root) }
         let receipt = staging.appending(path: "receipt")
         try fm.createDirectory(at: receipt, withIntermediateDirectories: true)
         try JSONEncoder().encode(stack).write(to: receipt.appending(path: "stack.json"))

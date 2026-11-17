@@ -61,11 +61,13 @@ final class AppModel {
     let releaseInstaller = ReleaseInstaller(root: ReleaseInstaller.defaultRoot())
     var installedReleaseStacks: [InstalledReleaseStack] = []
     var isInstallingRelease = false
+    let buildCatalogue = BuildCatalogueController()
     let steamBridgeBuild = SteamBridgeBuildController()
     var wineSetup = WineSetupController()
 
     func refreshReleaseStacks() async {
         installedReleaseStacks = await releaseInstaller.installedStacks()
+        buildCatalogue.installed = await releaseInstaller.installedComponents()
     }
 
     func selectLaunchStack(_ installed: InstalledReleaseStack) async {
@@ -148,6 +150,7 @@ final class AppModel {
         guard refreshTask == nil else { return }
         record(.info, "Threshold XR started. Monado is managed through its existing LaunchAgent and is never stopped when this app quits.")
         Task { await discoverComponents() }
+        buildCatalogue.start(installer: releaseInstaller)
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }

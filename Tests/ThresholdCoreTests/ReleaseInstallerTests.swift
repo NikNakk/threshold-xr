@@ -66,6 +66,22 @@ final class ReleaseInstallerTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: temporary.url.appending(path: "current").path))
     }
 
+    func testSingleBuildInventoryAndNoStackReceipt() async throws {
+        let temporary = try TemporaryDirectory()
+        let (stack, downloader) = try fixture(archive: tar(name: "xrizer/libxrizer.dylib"))
+        let installer = ReleaseInstaller(root: temporary.url, downloader: downloader)
+        try await installer.install(stack.releases[0])
+        let installed = await installer.installedComponents()
+        XCTAssertEqual(installed.map { $0.release.component }, ["xrizer"])
+        XCTAssertEqual(installed.first?.manifestSHA256, stack.releases[0].manifestSHA256)
+        let stacks = await installer.installedStacks()
+        XCTAssertTrue(stacks.isEmpty)
+        try await installer.install(stack.releases[0]) // Byte-identical retries are safe.
+        try FileManager.default.removeItem(at: temporary.url.appending(path: "xrizer/test/windows-x86_64"))
+        let damaged = await installer.installedComponents()
+        XCTAssertTrue(damaged.isEmpty)
+    }
+
     func testManifestTamperingDoesNotInstall() async throws {
         let temporary = try TemporaryDirectory()
         var (stack, downloader) = try fixture(archive: tar(name: "xrizer/libxrizer.dylib"))

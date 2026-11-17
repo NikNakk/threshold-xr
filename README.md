@@ -170,7 +170,9 @@ the tested Wine/development-bundle pair automatically. See the
 [setup instructions](docs/steam-bridge-local-build.md) for the steps and current
 Steam Play integration boundary.
 
-Components → **Install Stack…** imports a pinned release-stack JSON and installs verified,
-versioned files from our GitHub forks. Activation remains a separate step. See the
+Components → **GitHub Builds…** checks our forks at startup and hourly, and offers
+**Install** or **Update** for complete published preview builds. No GitHub login or
+stack JSON is needed. Downloads are checked and installed alongside older versions;
+activation remains separate. **Install Stack…** remains available for pinned stacks. See the
 [implementation and rollout plan](docs/dependency-releases.md) for the release format,
 workflow branches, maintainer commands, validation and remaining stages.
